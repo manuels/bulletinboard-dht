@@ -1,0 +1,8 @@
+[package]
+name = "pinboard"
+version = "0.1.0"
+authors = ["Manuel Schölling <manuel.schoelling@gmx.de>"]
+
+[dependencies]
+rand = "*"
+byteorder = "*"
