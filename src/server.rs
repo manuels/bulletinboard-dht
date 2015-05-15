@@ -1,280 +1,180 @@
-use std::sync::{Arc,Mutex};
+use std::thread::{spawn,sleep_ms};
 use std::sync::mpsc::{Sender,Receiver,channel};
-use std::net::UdpSocket;
-use std::net::SocketAddr;
+use std::sync::{Arc,Mutex};
+use std::str;
 use std::io;
+use std::net::{SocketAddr,UdpSocket};
 use std::collections::HashMap;
-use std::thread;
 
-use peer::Id;
-use peer::Peer;
-use kbucket::{KBuckets,K};
-use proto_pinboard::Pinboard;
+use rustc_serialize::json::{encode,decode};
 
-struct Server {
-	own_id: Arc<Id>,
-	kbuckets: KBuckets,
+use utils::semaphore::Semaphore;
+use message::{Message, Cookie};
+use node::Node;
 
-	read:  UdpSocket,
-	write: UdpSocket,
+fn ignore<R,E>(res: Result<R,E>) {
+	match res {
+		_ => ()
+	}
+}
 
-	own_values: HashMap<Id, Vec<Vec<u8>>>,
-	strange_values: HashMap<Id, Vec<Vec<u8>>>,
-
+pub struct Server {
+	sock: UdpSocket,
 	pending_requests: Arc<Mutex<HashMap<(SocketAddr, Cookie), Sender<Message>>>>
 }
 
-const TIMEOUT_MS:usize = 3000;
-
-#[derive(Clone,PartialEq)]
-pub enum Protocol {
-	Pinboard,
-	Unknown
-}
-
-impl Protocol {
-	fn respond_find_node(&self, sock: &UdpSocket, peer: &Peer,
-	                     cookie: &Cookie, peer_list: &Vec<Peer>)
-		-> io::Result<usize>
-	{
-		match self {
-			&Protocol::Pinboard => Pinboard::respond_find_node(&sock, &peer, &cookie, &peer_list),
-			&Protocol::Unknown => Err(io::Error::new(io::ErrorKind::Other, "unknown protocol")),
+impl Clone for Server {
+	fn clone(&self) -> Server {
+		Server {
+			sock:             self.sock.try_clone().unwrap(),
+			pending_requests: self.pending_requests.clone(),
 		}
 	}
-
-	fn respond_find_value(&self, sock: &UdpSocket, peer: &Peer, id: &Id,
-	                      cookie: &Cookie, result: Result<Vec<&Vec<u8>>,Vec<Peer>>)
-		-> io::Result<usize>
-	{
-		match self {
-			&Protocol::Pinboard => Pinboard::respond_find_value(&sock, &peer, &id, &cookie, result),
-			&Protocol::Unknown => Err(io::Error::new(io::ErrorKind::Other, "unknown protocol")),
-		}
-	}
-
-	fn respond_pong(&self, sock: &UdpSocket, own_id: &Id, peer: &Peer, cookie: &Cookie)
-		-> io::Result<usize>
-	{
-		match self {
-			&Protocol::Pinboard => Pinboard::respond_pong(&sock, &own_id, &peer, &cookie),
-			&Protocol::Unknown  => Err(io::Error::new(io::ErrorKind::Other, "unknown protocol")),
-		}
-	}
-}
-
-pub trait ProtocolTrait {
-	fn request_ping(sock: &UdpSocket, own_id: &Id, peer: &Peer) -> io::Result<(Cookie, usize)>;
-	fn respond_pong(sock: &UdpSocket, own_id: &Id, peer: &Peer, cookie: &Cookie) -> io::Result<usize>;
-
-	fn request_find_node(sock: &UdpSocket, own_id: &Id, peer: &Peer, find_id: &Id)
-		-> io::Result<(Cookie, usize)>;
-	fn respond_find_node(sock: &UdpSocket, peer: &Peer,
-	                     cookie: &Cookie, peer_list: &Vec<Peer>)
-		-> io::Result<usize>;
-
-	fn request_find_value(sock: &UdpSocket, own_id: &Id, peer: &Peer, find_id: &Id)
-		-> io::Result<(Cookie, usize)>;
-	fn respond_find_value(sock: &UdpSocket, peer: &Peer, own_id: &Id,
-	                      cookie: &Cookie, result: Result<Vec<&Vec<u8>>,Vec<Peer>>)
-		-> io::Result<usize>;
-
-	fn request_store(sock: &UdpSocket, own_id: &Id, peer: &Peer, key: &Id, value: &Vec<u8>)
-		-> io::Result<usize>;
-
-	fn parse(buf: &[u8]) -> io::Result<Message>;
-}
-
-pub type Cookie = Vec<u8>;
-pub type Key = Id;
-
-#[derive(Clone)]
-pub enum Message {
-	Ping(Cookie, Id),
-	Pong(Cookie, Id),
-	FindNode(Cookie, Id, Id),
-	FoundNode(Cookie, Id, Vec<Peer>),
-	FindValue(Cookie, Id, Key),
-	FoundValue(Cookie, Id, Vec<Vec<u8>>),
-	Store(Id, Key, Vec<u8>),
-	Timeout,
-	Undefined,
 }
 
 impl Server {
-	pub fn new(addr: &SocketAddr, own_id: Option<Id>) -> io::Result<Server> {
-		let read = try!(UdpSocket::bind(addr));
-		let write = try!(read.try_clone());
-
-		let own_id = Arc::new(own_id.unwrap_or_else(|| Id::generate()));
-
-		Ok(Server {
-			own_id: own_id.clone(),
-			kbuckets: KBuckets::new(own_id),
-			
-			read:   read,
-			write:  write,
-
-			own_values:       HashMap::new(),
-			strange_values:   HashMap::new(),
-
+	pub fn new(sock: UdpSocket) -> Server {
+		Server {
+			sock: sock.try_clone().unwrap(),
 			pending_requests: Arc::new(Mutex::new(HashMap::new())),
-		})
+		}
 	}
 
-	pub fn ping(&self, peer: &Peer) -> io::Result<Receiver<Message>> {
-		let proto = peer.protocol();
-		let (cookie, _) = try!(proto.request_ping(self.write, self.own_id, &peer));
+	pub fn local_addr(&self) -> io::Result<SocketAddr> {
+		self.sock.local_addr()
+	}
 
+	pub fn send_request(&self, addr: SocketAddr, req: &Message) -> Message
+	{
 		let (tx, rx) = channel();
-		let txx = tx.clone();
 
-		let key = (peer.addr(), cookie);
-		let pending_requests = self.pending_requests.lock().unwrap();
-		pending_requests.insert(key.clone(), tx);
-
-		let pending_requests = self.pending_requests.clone();
-
-		thread::Builder::new().name("ping".to_string()).spawn(move || {
-			thread::sleep_ms(TIMEOUT_MS);
-			txx.send(Message::Timeout);
-
-			let pending_requests = pending_requests.lock().unwrap();
-			pending_requests.remove(key);
-		}).unwrap();
-
-		Ok(rx)
-	}
-
-	pub fn run(self) -> Arc<Mutex<Self>> {
-		let sock = self.read.try_clone().unwrap();
-		let this = Arc::new(Mutex::new(self));
-		let that = this.clone();
-
-		thread::Builder::new().name("DHT server".to_string()).spawn(move || {
-			loop {
-				let mut buf = vec![0; 16*1024];
-				let (len, addr) = sock.recv_from(&mut buf).unwrap();
-				buf.truncate(len);
-
-				let mut server = this.lock().unwrap();
-				server.process_message(&buf[..], &addr).unwrap();
-			}
-		}).unwrap();
-
-		that
-	}
-
-	fn parse(&self, msg: &[u8]) -> io::Result<(Protocol,Message)> {
-		let msg = try!(Pinboard::parse(msg));
-		match msg {
-			Message::Undefined => {},
-			_ => return Ok((Protocol::Pinboard, msg)),
+		{
+			let mut pending = self.pending_requests.lock().unwrap();
+			let key = (addr, req.cookie().unwrap().clone());
+			(*pending).insert(key, tx);
 		}
 
-		Ok((Protocol::Unknown, Message::Undefined))
+		let buf = encode(&req).unwrap().into_bytes();
+		self.sock.send_to(&buf[..], addr).unwrap();
+
+		rx.recv().unwrap()
 	}
 
-	pub fn process_message(&mut self, buf: &[u8], addr: &SocketAddr) -> Result<(),()> {
-		let (proto, msg) = try!(self.parse(buf).map_err(|_| ()));
-		match msg.clone() {
-			Message::Ping(cookie, id) => {
-				let peer = Peer::new(id, addr.clone(), proto.clone());
-				self.kbuckets.update(&self.write, &self.own_id, &peer);
+	pub fn send_response(&self, addr: SocketAddr, resp: &Message)
+	{
+		let buf = encode(&resp).unwrap().into_bytes();
+		self.sock.send_to(&buf[..], addr).unwrap();
+	}
 
-				proto.respond_pong(&self.write, &self.own_id, &peer, &cookie)
-					.map(|_| ())
-					.map_err(|_| ())
-			},
+	pub fn send_request_ms(&self, addr: &SocketAddr, req: &Message, timeout: u32)
+		-> Message
+	{
+		let (tx, rx) = channel();
 
-			Message::Pong(cookie, id) => {
-				// k-buckets will be updated by receiver
-				// let peer = Peer::new(id, addr.clone(), proto);
-				// self.kbuckets.update(&peer);
-				let p = Peer::new(id, addr.clone(), proto);
+		{
+			let mut pending = self.pending_requests.lock().unwrap();
+			let key = (addr.clone(), req.cookie().unwrap().clone());
+			(*pending).insert(key, tx.clone());
+		}
 
-				let pending_requests = self.pending_requests.lock().unwrap();
-				match pending_requests.remove(&(p.addr(), cookie)) {
-					Some(req) => req.send(msg).map(|_| ()).map_err(|_| ()),
-					None => Err(())
-				}
-			},
+		let buf = encode(&req).unwrap().into_bytes();
+		self.sock.send_to(&buf[..], addr).unwrap();
 
-			Message::Store(id, key, value) => {
-				let peer = Peer::new(id, addr.clone(), proto);
+		spawn(move || {
+			sleep_ms(timeout);
+			match tx.send(Message::Timeout) {
+				Ok(_) => (),
+				Err(_) => (),
+			}
+		});
 
-				if !self.kbuckets.contain(&peer) {
-					return Err(());
-				}
+		rx.recv().unwrap()
+	}
 
-				self.kbuckets.update(&peer);
+	/// returns an Channel you can use as an Iterator of type [(addr_index, Message), ...]
+	///
+	/// just consume it until you got a reponse that satisfies your requirements
+	/// (You probably do not want to call iter.collect(): it will ask ALL nodes!)
+	pub fn send_many_request<I>(&self, iter: I, req: Message,
+	                    timeout: u32, concurrency: isize)
+		-> Receiver<(Node, Message)>
+			where I: 'static + Iterator<Item=Node> + Send
+	{
+		let is_rx_dead = Arc::new(Mutex::new(false));
+		let (tx, rx) = channel();
 
-				// TODO: restrict size of strange_values
-				if !self.strange_values.contains_key(&key) {
-					self.strange_values.insert(key.clone(), vec![]);
-				}
+		let this = self.clone();
+		spawn(move || {
+			let sem = Arc::new(Semaphore::new(concurrency));
 
-				self.strange_values.get_mut(&key).map(|v| v.push(value));
+			for node in iter.take_while(|_| *(is_rx_dead.lock().unwrap()) == false) {
+				let is_rx_dead = is_rx_dead.clone();
+				let node = node.clone();
+				let this = this.clone();
+				let req = req.clone();
+				let sem = sem.clone();
+				let tx = tx.clone();
 
-				Ok(())
-			},
+				// acquire BEFORE we spawn!
+				sem.acquire();
 
-			Message::FindValue(cookie, id, key) => {
-				let peer = Peer::new(id, addr.clone(), proto.clone());
-				self.kbuckets.update(&peer);
+				spawn(move || {
+					let resp = this.send_request_ms(&node.addr, &req, timeout);
+					sem.release();
+					
+					if tx.send((node,resp)).is_err() {
+						*(is_rx_dead.lock().unwrap()) = true;
+					}						
+				});
+			}
+		});
 
-				let own = self.own_values.get(&key);
-				let strange = self.strange_values.get(&key);
+		rx
+	}
+}
 
-				let mut values = vec![];
-				if own.is_some() {
-					for v in own.unwrap() {
-						values.push(v);
+impl Iterator for Server {
+	type Item = (SocketAddr, Message);
+
+	fn next(&mut self) -> Option<Self::Item> {
+		let mut buf = [0; 64*1024];
+
+		loop {
+			let (len, src) = self.sock.recv_from(&mut buf).unwrap();
+			let msg = str::from_utf8(&buf[..len]);
+
+			if msg.is_err() {
+				continue
+			}
+
+			let msg:Result<Message,_> = decode(msg.unwrap());
+
+			// dispatch responses
+			match msg {
+				Ok(Message::Ping(_))
+				| Ok(Message::FindNode(_))
+				| Ok(Message::FindValue(_))
+				| Ok(Message::Store(_))
+				| Ok(Message::Timeout)
+				| Err(_) => (),
+
+				Ok(ref resp @ Message::Pong(_))
+				| Ok(ref resp @ Message::FoundNode(_))
+				| Ok(ref resp @ Message::FoundValue(_)) => {
+					let key = (src, resp.cookie().unwrap().clone());
+					let mut pending = self.pending_requests.lock().unwrap();
+					
+					match (*pending).remove(&key) {
+						None => (),
+						Some(tx) => ignore(tx.send(resp.clone())),
 					}
-				}
-				if strange.is_some() {
-					for v in strange.unwrap() {
-						values.push(v);
-					}
-				}
-				values.sort_by(|a,b| a.cmp(b));
-				values.dedup();
+				},
+			}
 
-				let response = if values.len() > 0 {
-					Ok(values)
-				} else {
-					Err(self.kbuckets.get_nearest_peers(K, &key))
-				};
-
-				proto.respond_find_value(&self.write, &peer, &*self.own_id, &cookie, response)
-					.map(|_| ())
-					.map_err(|_| ())
-			},
-
-			Message::FindNode(cookie, id, find_id) => {
-				let peer = Peer::new(id, addr.clone(), proto.clone());
-				self.kbuckets.update(&peer);
-
-				let peers = self.kbuckets.get_nearest_peers(K, &find_id);
-
-				proto.respond_find_node(&self.write, &peer, &cookie, &peers)
-					.map(|_| ())
-					.map_err(|_| ())
-			},
-
-			Message::FoundNode(cookie, id, _)
-			| Message::FoundValue(cookie, id, _) =>
-			{
-				let peer = Peer::new(id, addr.clone(), proto);
-				self.kbuckets.update(&peer);
-
-				match self.pending_requests.remove(&cookie) {
-					Some(req) => req.send(msg).map_err(|_| ()),
-					None => Err(())
-				}
-			},
-
-			Message::Undefined => Err(()),
+			match msg {
+				Err(_) | Ok(Message::Timeout) => (),
+				Ok(r) => return Some((src, r)),
+			}
 		}
 	}
 }

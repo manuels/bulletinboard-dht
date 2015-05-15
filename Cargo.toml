@@ -1,8 +1,11 @@
 [package]
-name = "pinboard"
+name = "bulletinboard"
 version = "0.1.0"
 authors = ["Manuel Schölling <manuel.schoelling@gmx.de>"]
 
 [dependencies]
 rand = "*"
-byteorder = "*"
+rustc-serialize = "*"
+time = "*"
+log = "*"
+env_logger = "*"
