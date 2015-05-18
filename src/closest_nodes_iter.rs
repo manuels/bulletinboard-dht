@@ -2,7 +2,10 @@ use std::sync::{Arc, Mutex, Condvar};
 use std::sync::mpsc::Receiver;
 use std::thread::spawn;
 
-use node::{Node, NodeId, NODEID_BYTELEN};
+use node::{Node, NodeId};
+
+#[cfg(test)]
+use node::NODEID_BYTELEN;
 
 #[derive(Clone)]
 pub struct ClosestNodesIter {
@@ -102,6 +105,7 @@ impl Iterator for ClosestNodesIter {
 	fn next(&mut self) -> Option<Self::Item> {
 		let key = &*self.key;
 		let desc_dist_order = |n1:&Node, n2:&Node| n1.dist(key).cmp(&n2.dist(key));
+		let asc_dist_order = |n1:&Node, n2:&Node| desc_dist_order(n1,n2).reverse();
 
 		loop {
 			// wait for lock
@@ -123,12 +127,11 @@ impl Iterator for ClosestNodesIter {
 			processed_nodes.sort_by(&desc_dist_order);
 
 			let &mut (ref mut unprocessed_nodes, _) = &mut *pair;
-			unprocessed_nodes.sort_by(&desc_dist_order);
+			unprocessed_nodes.sort_by(&asc_dist_order);
 
 			let closest_dist = processed_nodes.get(self.count-1).map(|n| n.dist(key));
 
-			unprocessed_nodes.reverse();
-			let res = match unprocessed_nodes.pop() {
+			match unprocessed_nodes.pop() {
 				None => return None,
 				Some(node) => {
 					processed_nodes.push(node.clone());
@@ -140,13 +143,13 @@ impl Iterator for ClosestNodesIter {
 						 * node we already asked.
 						 * Let's see if we will receive another node that is closer.
 						 */
+						debug!("looking for a closer node");
 						continue
 					}
 					
 					return Some(node)
 				}
-			};
-			res
+			}
 		}
 	}
 }

@@ -5,6 +5,9 @@ use std::io;
 use node::{Node, NodeId, NODEID_BYTELEN, xor};
 use kademlia::K_PARAM;
 
+#[cfg(test)]
+use utils::ignore;
+
 #[derive(Clone)]
 pub struct KBuckets {
 	own_id:  Arc<Mutex<NodeId>>,
@@ -126,7 +129,8 @@ fn test_get_nearest() {
 	let mut that = this.clone();
 	that[NODEID_BYTELEN-1] = 0x01;
 	let n = Node::new("localhost:0", that).unwrap();
-	b.add(n.clone());
+	ignore(b.add(n.clone()));
+
 	let node_list = b.get_closest_nodes(&this, 10);
 	assert_eq!(node_list, vec![n]);
 }

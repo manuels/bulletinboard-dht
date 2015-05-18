@@ -1,25 +1,25 @@
 use std::thread::{spawn,sleep_ms};
 use std::net::{UdpSocket,SocketAddr,ToSocketAddrs};
 use std::sync::{Arc,Mutex};
-use std::collections::HashMap;
 use std::io;
 
-use time::{SteadyTime,Duration};
-use rand;
+use time::Duration;
 
 use storage;
 use server::Server;
 use kbuckets::KBuckets;
-use node::{Node, NodeId, NODEID_BYTELEN};
+use node::{Node, NodeId};
 use closest_nodes_iter::ClosestNodesIter;
 use message::{Message,Cookie,COOKIE_BYTELEN};
 use message::{Ping,Pong, FindNode, FoundNode, FindValue, FoundValue, Store};
+use utils::ignore;
 
 pub const K_PARAM: usize = 20;
 pub const ALPHA_PARAM: isize = 3;
-pub const timeout_ms: u32 = 2000;
+pub const TIMEOUT_MS: u32 = 2000;
 pub const MAX_VALUE_LEN: usize = 2048;
 
+#[allow(non_snake_case)]
 #[derive(Clone)]
 pub struct Kademlia {
 	own_id: Arc<Mutex<NodeId>>,
@@ -38,7 +38,7 @@ enum FindJob {
 
 impl Kademlia {
 	pub fn new_supernode<A: ToSocketAddrs>(addr: A, own_id: Option<NodeId>) -> Kademlia {
-		let own_id = own_id.or_else(|| Some(Self::generate_node_id()));
+		let own_id = own_id.or_else(|| Some(Node::generate_id()));
 		Self::create(addr, own_id)
 	}
 
@@ -47,10 +47,10 @@ impl Kademlia {
 		let server = Server::new(udp);
 
 		let ttl = Duration::minutes(15);
-		let own_id = own_id.unwrap_or_else(|| Self::generate_node_id());
+		let own_id = own_id.unwrap_or_else(|| Node::generate_id());
 		let own_id = Arc::new(Mutex::new(own_id));
 
-		let mut kad = Kademlia {
+		let kad = Kademlia {
 			own_id:   own_id.clone(),
 			server:   server.clone(),
 			kbuckets: KBuckets::new(own_id.clone()),
@@ -59,24 +59,24 @@ impl Kademlia {
 			TTL:      ttl,
 		};
 
-		let mut this = kad.clone();
+		let this = kad.clone();
 		spawn(move || {
 			for (src, msg) in server {
 				let mut this = this.clone();
 
 				spawn(move || {
-					this.handle_message(src, msg).unwrap();
+					ignore(this.handle_message(src, msg));
 				});
 			}
 		});
 
-		let mut this = kad.clone();
+		let this = kad.clone();
 		spawn(move || {
 			// look for a random ID from time to time
 			loop {
 				sleep_ms(60*1000);
 
-				let node_id = Self::generate_node_id();
+				let node_id = Node::generate_id();
 				this.find_node(node_id);
 			}
 		});
@@ -96,24 +96,15 @@ impl Kademlia {
 			 * It doesn't matter since they will be replaced automatically anyway.
 			 */
 
-			let node_id = Self::generate_node_id();
+			let node_id = Node::generate_id();
 			let node = Node::new(address, node_id);
 
-			let res = match node {
-				Ok(n) => {
-					let res = kad.kbuckets.add(n);
-					res
-				},
-				Err(_) => Ok(()),
-			}; // ignore this result
+			ignore(node.map(|n| kad.kbuckets.add(n)));
 		}
 
-		let mut new_id = new_id.unwrap_or_else(|| Self::generate_node_id());
+		let mut new_id = new_id.unwrap_or_else(|| Node::generate_id());
 		loop {
-			{
-				let mut own_id = kad.own_id.lock().unwrap();
-				*own_id = new_id.clone();
-			}
+			kad.set_own_id(new_id.clone());
 
 			let node_list = kad.find_node(new_id.clone());
 
@@ -123,20 +114,29 @@ impl Kademlia {
 				) {
 
 				for n in node_list.into_iter() {
-					kad.kbuckets.add(n);
+					ignore(kad.kbuckets.add(n));
 				}
 
 				break;
 			}
 
-			new_id = Self::generate_node_id();
+			new_id = Node::generate_id();
 		}
 
 		kad
 	}
 
-	pub fn get(&self, key: NodeId) -> Option<Vec<Vec<u8>>> {
-		self.find_value(key).ok()
+	pub fn get(&self, key: NodeId) -> Vec<Vec<u8>> {
+		self.find_value(key).unwrap_or(vec![])
+	}
+
+	pub fn get_own_id(&self) -> NodeId {
+		self.own_id.lock().unwrap().clone()
+	}
+
+	fn set_own_id(&self, new_id: NodeId) {
+		let mut own_id = self.own_id.lock().unwrap();
+		*own_id = new_id;
 	}
 
 	pub fn put(&mut self, key: NodeId, value: Vec<u8>) -> Result<(),Vec<u8>> {
@@ -144,7 +144,8 @@ impl Kademlia {
 			return Err(value);
 		}
 
-		let mut storage = self.internal_values.put(key.clone(), value.clone());
+		self.internal_values.put(key.clone(), value.clone());
+		self.publish(key.clone(), value.clone());
 
 		let this = self.clone();
 		let key = key.clone();
@@ -155,50 +156,45 @@ impl Kademlia {
 					break
 				};
 
-				let own_id = {this.own_id.lock().unwrap().clone()};
-				let req = Store {
-					sender_id: own_id,
-					cookie:    Self::generate_cookie(),
-					key:       key.clone(),
-					value:     value.clone(),
-				};
-
-				for n in this.find_node(key.clone()) {
-					this.server.send_request(n.addr.clone(), &Message::Store(req.clone()));
-				}
-
+				this.publish(key.clone(), value.clone());
 				sleep_ms((this.TTL.num_milliseconds()/2) as u32);
 			}
 		});
 		Ok(())
 	}
 
+	fn publish(&self, key: NodeId, value: Vec<u8>) {
+		let msg = Message::Store(Store {
+			sender_id: self.get_own_id(),
+			cookie:    Self::generate_cookie(),
+			key:       key.clone(),
+			value:     value,
+		});
+
+		for n in self.find_node(key.clone()) {
+			self.server.hit_and_run(n.addr.clone(), &msg);
+		}
+	}
+
 	pub fn remove(&mut self, key: &NodeId, value: &Vec<u8>) {
 		self.internal_values.remove(key, value)
 	}
 
-	fn generate_cookie() -> Cookie {
-		let cookie = Self::generate_node_id();
-		assert_eq!(cookie.len(), COOKIE_BYTELEN);
-		cookie
+	pub fn remove_key(&mut self, key: &NodeId) {
+		self.internal_values.remove_key(key)
 	}
 
-	fn generate_node_id() -> NodeId {
-		let mut id = [0u8; NODEID_BYTELEN];
-		for i in id.iter_mut() {
-			*i = rand::random::<u8>();
-		}
-		id.to_vec()
+	fn generate_cookie() -> Cookie {
+		let cookie = Node::generate_id();
+		assert_eq!(cookie.len(), COOKIE_BYTELEN);
+		cookie
 	}
 
 	fn ping_or_replace_with(&mut self, replacement: Node) {
 		let node_list = {
 			let bucket = self.kbuckets.get_bucket(&replacement.node_id);
-			if bucket.is_none() {
-				return
-			}
 
-			let mut node_list:Vec<Node> = bucket.unwrap().clone();
+			let mut node_list:Vec<Node> = bucket.map(|b| b.clone()).unwrap_or(vec![]);
 			node_list.sort_by(|a,b| {
 				let x = *a.last_seen.lock().unwrap();
 				let y = *b.last_seen.lock().unwrap();
@@ -207,15 +203,12 @@ impl Kademlia {
 			node_list
 		};
 
-		let own_id = {
-			self.own_id.lock().unwrap().clone()
-		};
 		let req = Message::Ping(Ping {
-			sender_id: own_id,
+			sender_id: self.get_own_id(),
 			cookie:    Self::generate_cookie(),
 		});
 
-		let rx = self.server.send_many_request(node_list.into_iter(), req, timeout_ms, ALPHA_PARAM);
+		let rx = self.server.send_many_request(node_list.into_iter(), req, TIMEOUT_MS, ALPHA_PARAM);
 		
 		for (node, resp) in rx.iter() {
 			match resp {
@@ -260,8 +253,8 @@ impl Kademlia {
 				let mut sender = try!(self.kbuckets.construct_node(src, sender_id));
 				sender.update_last_seen();
 
-				self.kbuckets.add(sender)
-					.map_err(|sender| self.ping_or_replace_with(sender));
+				ignore(self.kbuckets.add(sender)
+					.map_err(|sender| self.ping_or_replace_with(sender)));
 			}
 		}
 		Ok(())
@@ -270,9 +263,7 @@ impl Kademlia {
 	fn handle_message(&mut self, src: SocketAddr, msg: Message)
 		-> io::Result<()>
 	{
-		let own_id = {
-			self.own_id.lock().unwrap().clone()
-		};
+		let own_id = self.get_own_id();
 
 		try!(self.update_buckets(&own_id, src, &msg));
 
@@ -295,8 +286,6 @@ impl Kademlia {
 				self.server.send_response(src, &Message::FoundNode(found_node));
 			},
 			Message::FindValue(find_value) => {
-				let now = SteadyTime::now();
-				
 				let internal = self.internal_values.get(&find_value.key);
 				let external = self.external_values.get(&find_value.key);
 
@@ -350,27 +339,23 @@ impl Kademlia {
 
 		let iter = ClosestNodesIter::new(key.clone(), K_PARAM, closest);
 
-		let own_id = {
-			self.own_id.lock().unwrap().clone()
-		};
-
 		let req = match job {
 			FindJob::Node =>
 				Message::FindNode(FindNode {
 					cookie:    Self::generate_cookie(),
-					sender_id: own_id.clone(),
+					sender_id: self.get_own_id(),
 					key:       key,
 				}),
 			FindJob::Value => {
 				Message::FindValue(FindValue {
 					cookie:    Self::generate_cookie(),
-					sender_id: own_id.clone(),
+					sender_id: self.get_own_id(),
 					key:       key,
 				})
 			},
 		};
 
-		let rx = self.server.send_many_request(iter.clone(), req, timeout_ms, ALPHA_PARAM); //chain channels??
+		let rx = self.server.send_many_request(iter.clone(), req, TIMEOUT_MS, ALPHA_PARAM); //chain channels??
 
 		let mut values = vec![];
 		let mut value_nodes = K_PARAM;
@@ -378,7 +363,9 @@ impl Kademlia {
 		for (_, resp) in rx.iter() {
 			match (resp, &job) {
 				(Message::FoundNode(found_node), _) => {
-					iter.add_nodes(found_node.nodes)
+					let own_id = self.get_own_id();
+					let nodes = found_node.nodes.into_iter().filter(|n| n.node_id != own_id).collect();
+					iter.add_nodes(nodes)
 				},
 				(Message::FoundValue(found_value), &FindJob::Value) => {
 					if found_value.values.len() > 0 {

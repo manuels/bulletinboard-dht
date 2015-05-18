@@ -9,3 +9,12 @@ rustc-serialize = "*"
 time = "*"
 log = "*"
 env_logger = "*"
+rust-crypto = "*"
+
+[features]
+default = ["dbus_service"]
+"dbus_service" = ["dbus"]
+
+[dependencies.dbus]
+version = "*"
+optional = true

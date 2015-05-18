@@ -9,6 +9,7 @@ pub struct InternalStorage {
 	storage: Arc<Mutex<HashMap<NodeId, Vec<Vec<u8>>>>>,
 }
 
+#[allow(non_snake_case)]
 #[derive(Clone)]
 pub struct ExternalStorage {
 	storage: Arc<Mutex<HashMap<NodeId, Vec<(Vec<u8>, SteadyTime)>>>>,
@@ -61,6 +62,11 @@ impl InternalStorage {
 				}
 			}
 		}
+	}
+
+	pub fn remove_key(&mut self, key: &NodeId) {
+		let mut storage = self.storage.lock().unwrap();
+		storage.remove(key);
 	}
 }
 

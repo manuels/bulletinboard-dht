@@ -8,15 +8,10 @@ use std::collections::HashMap;
 
 use rustc_serialize::json::{encode,decode};
 
+use utils::ignore;
 use utils::semaphore::Semaphore;
 use message::{Message, Cookie};
 use node::Node;
-
-fn ignore<R,E>(res: Result<R,E>) {
-	match res {
-		_ => ()
-	}
-}
 
 pub struct Server {
 	sock: UdpSocket,
@@ -32,6 +27,8 @@ impl Clone for Server {
 	}
 }
 
+// TODO: cleanup 'pending_requests' from time to time!
+
 impl Server {
 	pub fn new(sock: UdpSocket) -> Server {
 		Server {
@@ -44,7 +41,18 @@ impl Server {
 		self.sock.local_addr()
 	}
 
+	/// just send a message and don't care about the reponse
+	pub fn hit_and_run(&self, addr: SocketAddr, req: &Message) {
+		self.send(addr, req);
+	}
+
 	pub fn send_request(&self, addr: SocketAddr, req: &Message) -> Message
+	{
+		let rx = self.send(addr, req);
+		rx.recv().unwrap()
+	}
+
+	fn send(&self, addr: SocketAddr, req: &Message) -> Receiver<Message>
 	{
 		let (tx, rx) = channel();
 
@@ -57,7 +65,7 @@ impl Server {
 		let buf = encode(&req).unwrap().into_bytes();
 		self.sock.send_to(&buf[..], addr).unwrap();
 
-		rx.recv().unwrap()
+		rx
 	}
 
 	pub fn send_response(&self, addr: SocketAddr, resp: &Message)
@@ -108,6 +116,7 @@ impl Server {
 			let sem = Arc::new(Semaphore::new(concurrency));
 
 			for node in iter.take_while(|_| *(is_rx_dead.lock().unwrap()) == false) {
+				debug!("send_many_request iter={:?}", node);
 				let is_rx_dead = is_rx_dead.clone();
 				let node = node.clone();
 				let this = this.clone();

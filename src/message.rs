@@ -1,4 +1,4 @@
-use node::{Node, NodeId, NODEID_BYTELEN};
+use node::{Node, NodeId};
 
 pub const COOKIE_BYTELEN:usize = 160/8;
 

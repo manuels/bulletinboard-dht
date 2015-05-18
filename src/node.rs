@@ -2,8 +2,10 @@ use std::sync::{Arc,Mutex};
 use std::net::{SocketAddr,ToSocketAddrs};
 use std::io;
 
+use rand;
 use time::SteadyTime;
 use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
+#[cfg(test)]
 use rustc_serialize::json;
 use rustc_serialize::json::{ToJson,Json};
 
@@ -38,6 +40,14 @@ impl Node {
 		};
 
 		Ok(node)
+	}
+
+	pub fn generate_id() -> NodeId {
+		let mut id = [0u8; NODEID_BYTELEN];
+		for i in id.iter_mut() {
+			*i = rand::random::<u8>();
+		}
+		id.to_vec()
 	}
 
 	pub fn update_last_seen(&mut self) {
