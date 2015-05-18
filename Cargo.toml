@@ -10,6 +10,7 @@ time = "*"
 log = "*"
 env_logger = "*"
 rust-crypto = "*"
+docopt = "*"
 
 [features]
 default = ["dbus_service"]

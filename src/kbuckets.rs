@@ -85,20 +85,24 @@ impl KBuckets {
 	}
 
 	pub fn get_closest_nodes(&self, key: &NodeId, n: usize) -> Vec<Node> {
-		let append = |a:Vec<Node>, b:MutexGuard<Vec<Node>>| {
-			let res:Vec<Node> = a.into_iter().chain(b.clone().into_iter()).collect();
-			res
-		};
-
-		let mut nodes = self.buckets.iter()
-			.map(|b| b.lock().unwrap())
-			.fold(vec![], append);
+		let mut nodes = self.get_nodes();
 
 		let asc_dist_order = |n1:&Node, n2:&Node| n1.dist(key).cmp(&n2.dist(key));
 		nodes.sort_by(asc_dist_order);
 		nodes.truncate(n);
 
 		nodes.clone()
+	}
+
+	pub fn get_nodes(&self) -> Vec<Node> {
+		let append = |a:Vec<Node>, b:MutexGuard<Vec<Node>>| {
+			let res:Vec<Node> = a.into_iter().chain(b.clone().into_iter()).collect();
+			res
+		};
+
+		self.buckets.iter()
+			.map(|b| b.lock().unwrap())
+			.fold(vec![], append)
 	}
 }
 

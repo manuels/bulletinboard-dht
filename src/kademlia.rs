@@ -126,6 +126,10 @@ impl Kademlia {
 		kad
 	}
 
+	pub fn get_nodes(&self) -> Vec<Node> {
+		self.kbuckets.get_nodes()
+	}
+
 	pub fn get(&self, key: NodeId) -> Vec<Vec<u8>> {
 		self.find_value(key).unwrap_or(vec![])
 	}
