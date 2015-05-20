@@ -1,5 +1,5 @@
 [package]
-name = "bulletinboard"
+name = "bulletinboardd"
 version = "0.1.0"
 authors = ["Manuel Schölling <manuel.schoelling@gmx.de>"]
 
