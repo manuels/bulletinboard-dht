@@ -31,6 +31,7 @@ impl Clone for Server {
 
 impl Server {
 	pub fn new(sock: UdpSocket) -> Server {
+		debug!("Listening on {:?}", sock.local_addr());
 		Server {
 			sock: sock.try_clone().unwrap(),
 			pending_requests: Arc::new(Mutex::new(HashMap::new())),

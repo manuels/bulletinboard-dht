@@ -39,20 +39,23 @@ use node::Node;
 #[cfg(feature="dbus")]
 use dbus_service::dbus;
 
-//Usage: bulletinboard [-l LISTEN_ADDR -j JOIN_ADDR...]
 static USAGE: &'static str = "
-Usage: bulletinboardd
+Usage: bulletinboardd [-c <path>] [-l <listen_addr>] [-j <join_addr>...]
 
 Options:
-    -h, --help         Show this message.
-    --version          Show the version of rustc.
-    --cfg SPEC         Configure the compilation environment.
+    -h, --help                   Show this message.
+    --version                    Show the version of rustc.
+    -c, --config <path>          Set the path to the config file.
+    -l, --listen <listen_addr>   Listen on this address.
+    -j, --join <join_addr>       Bootstrap using these addresses.
 ";
 
 #[derive(RustcDecodable,Debug)]
 struct Args {
-	arg_cfg: Vec<String>,
-    flag_version: bool,
+	flag_config:  Option<String>,
+	flag_listen:  Option<String>,
+	flag_join:     Vec<String>,
+	flag_version: bool,
 }
 
 #[cfg(not(feature="dbus"))]
@@ -74,27 +77,28 @@ fn load_config(cfg_path: &Path) -> Vec<SocketAddr> {
 fn main() {
 	env_logger::init().unwrap();
 
-	let mut args: Args = Docopt::new(USAGE)
+	let args: Args = Docopt::new(USAGE)
 			.and_then(|d| d.parse())
 			.and_then(|d| d.decode())
 		.unwrap_or_else(|e| e.exit());
+	debug!("{:?}", args);
 
-//	let listen_addr = args.arg_listen_addr.pop().unwrap_or("[::]:0".to_string());
-	let listen_addr = "[::]:0".to_string();
+	let mut default_config = env::home_dir().unwrap_or(PathBuf::from("/tmp/"));
+	default_config.push(".config/bulletinboard_dht".to_string());
 
-	//let cfg_path = args.arg_cfgpath.pop().unwrap_or("~/.config/bulletinboard_dht".to_string());
-	let mut cfg_path = env::home_dir().unwrap_or(PathBuf::from("/tmp/"));
-	cfg_path.push(".config/bulletinboard_dht".to_string());
-	let cfg_path = cfg_path.as_path();
+	let cfg_path = args.flag_config.as_ref().map_or(default_config.as_path(), |s| Path::new(s));
+
+	let listen_addr = args.flag_listen.unwrap_or("[::]:0".to_string());
 
 	let supernodes:Vec<String> = load_config(&cfg_path).iter()
 		.map(|s| format!("{}", s))
-		//.chain(args.arg_join_addr.into_iter())
+		.chain(args.flag_join.into_iter())
 		.collect();
 
 	let supernodes = supernodes.iter()
 		.map(|s| &s[..])
 		.collect();
+	debug!("supernodes: {:?}", supernodes);
 
 	let kad = Kademlia::bootstrap(&listen_addr[..], supernodes, None);
 
@@ -104,12 +108,13 @@ fn main() {
 	});
 
 	loop {
-		sleep_ms(5*60*1000);
 		let nodes = kad.get_nodes();
 		let contents = json::encode(&nodes).unwrap_or("".to_string());
 
 		if let Ok(mut cfg_file) = File::create(&cfg_path) {
 			cfg_file.write(contents.as_bytes()).unwrap_or(0);
 		}
+
+		sleep_ms(5*60*1000);
 	}
 }
