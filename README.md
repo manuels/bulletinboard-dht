@@ -7,10 +7,15 @@ The interface is provided as a D-Bus service via these commands:
     Service: org.manuel.BulletinBoard
       Object Path: /
       Interface:   org.manuel.BulletinBoard
-      Commands:    - Get(String app_id, Array of [Byte] key) -> (Array of [Array of [Byte]] values)
-                   - Put(String app_id, Array of [Byte] key, Array of [Byte] value) -> ()
-                   - Remove(String app_id, Array of [Byte] key, Array of [Byte] value) -> ()
-                   - RemoveKey(String app_id, Array of [Byte] key) -> ()
+      Commands:
+       - Get(String app_id, Array of [Byte] key)
+          -> (Array of [Array of [Byte]] values)
+       - Put(String app_id, Array of [Byte] key, Array of [Byte] value)
+          -> ()
+       - Remove(String app_id, Array of [Byte] key, Array of [Byte] value)
+          -> ()
+       - RemoveKey(String app_id, Array of [Byte] key)
+          -> ()
 
 where `app_id` is an string specific to your application (e.g. `myfilesharingapp`).
 The `key` is hashed together with `app_id` using SHA-1 and the `value` may not

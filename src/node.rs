@@ -1,5 +1,5 @@
 use std::sync::{Arc,Mutex};
-use std::net::{SocketAddr,ToSocketAddrs};
+use std::net::{SocketAddr,SocketAddrV4,ToSocketAddrs};
 use std::io;
 
 use rand;
@@ -26,7 +26,15 @@ impl Node {
 		let mut it = try!(addr.to_socket_addrs());
 
 		let err = io::Error::new(io::ErrorKind::Other, "no valid IP address");
-		let addr = try!(it.next().ok_or(err));
+		let addr = match try!(it.next().ok_or(err)) {
+			SocketAddr::V4(addr) => SocketAddr::V4(addr),
+			SocketAddr::V6(addr) => {
+				match addr.ip().to_ipv4() {
+					None => SocketAddr::V6(addr),
+					Some(ip) => SocketAddr::V4(SocketAddrV4::new(ip, addr.port()))
+				}
+			}
+		};
 
 		if !Self::is_ip_valid(&addr) {
 			let err = io::Error::new(io::ErrorKind::Other, "no valid IP address");
