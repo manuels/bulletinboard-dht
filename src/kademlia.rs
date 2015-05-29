@@ -372,6 +372,7 @@ impl Kademlia {
 					iter.add_nodes(nodes)
 				},
 				(Message::FoundValue(found_value), &FindJob::Value) => {
+					debug!("Found {} values", found_value.values.len());
 					if found_value.values.len() > 0 {
 						value_nodes -= 1;
 					}

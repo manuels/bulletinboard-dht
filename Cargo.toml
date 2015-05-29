@@ -1,10 +1,12 @@
 [package]
 name = "bulletinboard"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Manuel Schölling <manuel.schoelling@gmx.de>"]
 description = "A general-purpose DHT"
 homepage = "https://github.com/manuels/bulletinboard-dht"
+repository = "https://github.com/manuels/bulletinboard-dht"
 license = " GPL-2.0"
+readme = "./README.md"
 
 [dependencies]
 rand = "*"

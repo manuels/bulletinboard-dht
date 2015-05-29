@@ -9,6 +9,8 @@ use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_serialize::json;
 use rustc_serialize::json::{ToJson,Json};
 
+use utils;
+
 pub const NODEID_BYTELEN:usize = 160/8;
 
 //pub type NodeId = [u8; NODEID_BYTELEN/8];
@@ -26,15 +28,8 @@ impl Node {
 		let mut it = try!(addr.to_socket_addrs());
 
 		let err = io::Error::new(io::ErrorKind::Other, "no valid IP address");
-		let addr = match try!(it.next().ok_or(err)) {
-			SocketAddr::V4(addr) => SocketAddr::V4(addr),
-			SocketAddr::V6(addr) => {
-				match addr.ip().to_ipv4() {
-					None => SocketAddr::V6(addr),
-					Some(ip) => SocketAddr::V4(SocketAddrV4::new(ip, addr.port()))
-				}
-			}
-		};
+		let addr = try!(it.next().ok_or(err));
+		let addr = utils::ip4or6(addr);
 
 		if !Self::is_ip_valid(&addr) {
 			let err = io::Error::new(io::ErrorKind::Other, "no valid IP address");

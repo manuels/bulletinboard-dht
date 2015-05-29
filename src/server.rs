@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use rustc_serialize::json::{encode,decode};
 
 use utils::ignore;
+use utils;
 use utils::semaphore::Semaphore;
 use message::{Message, Cookie};
 use node::Node;
@@ -55,6 +56,7 @@ impl Server {
 
 	fn send(&self, addr: SocketAddr, req: &Message) -> Receiver<Message>
 	{
+		debug!("Sending {:?}", req);
 		let (tx, rx) = channel();
 
 		{
@@ -86,6 +88,7 @@ impl Server {
 			(*pending).insert(key, tx.clone());
 		}
 
+		debug!("Sending {:?}", req);
 		let buf = encode(&req).unwrap().into_bytes();
 		self.sock.send_to(&buf[..], addr).unwrap();
 
@@ -117,7 +120,6 @@ impl Server {
 			let sem = Arc::new(Semaphore::new(concurrency));
 
 			for node in iter.take_while(|_| *(is_rx_dead.lock().unwrap()) == false) {
-				debug!("send_many_request iter={:?}", node);
 				let is_rx_dead = is_rx_dead.clone();
 				let node = node.clone();
 				let this = this.clone();
@@ -151,6 +153,7 @@ impl Iterator for Server {
 
 		loop {
 			let (len, src) = self.sock.recv_from(&mut buf).unwrap();
+			let src = utils::ip4or6(src);
 			let msg = str::from_utf8(&buf[..len]);
 
 			if msg.is_err() {

@@ -42,7 +42,7 @@ Getting Started
 
 4.   Join the DHT
 
-         ./target/release/bulletinboardd -j 94.23.110.187
+         ./target/release/bulletinboardd -j 94.23.110.187:6666
 
      94.23.110.187 is currently the only supernode
 
