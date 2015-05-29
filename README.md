@@ -47,3 +47,13 @@ Getting Started
      94.23.110.187 is currently the only supernode
 
 5.   Access DBus service
+
+         # Put() and Get() for key=0x02 and value=[0x01] (app_id="test")
+         $ dbus-send --session --reply-timeout=60000               --type=method_call --dest=org.manuel.BulletinBoard / org.manuel.BulletinBoard.Put string:"test" array:byte:2 array:byte:1
+         $ dbus-send --session --reply-timeout=60000 --print-reply --type=method_call --dest=org.manuel.BulletinBoard / org.manuel.BulletinBoard.Get string:"test" array:byte:2 
+            array [
+               array of bytes [
+                  01
+               ]
+            ]
+
