@@ -8,17 +8,17 @@ The interface is provided as a D-Bus service via these commands:
       Object Path: /
       Interface:   org.manuel.BulletinBoard
       Commands:
-       - Get(app_id: String, key: Array of [Byte])
-            -> (values: Array of [Array of [Byte]])
-       - Put(app_id: String, key: Array of [Byte], value: Array of [Byte])
+       - Get(app_id: String, key: Array of Bytes)
+            -> (values: Array of [Array of Bytes])
+       - Put(app_id: String, key: Array of Bytes, value: Array of Bytes)
             -> ()
-       - Remove(app_id: String, key: Array of [Byte], value: Array of [Byte])
+       - Remove(app_id: String, key: Array of Bytes, value: Array of Bytes)
             -> ()
-       - RemoveKey(app_id: String, key: Array of [Byte])
+       - RemoveKey(app_id: String, key: Array of Bytes)
             -> ()
 
 where `app_id` is an string specific to your application (e.g. `myfilesharingapp`). You can choose any `app_id` you want and you do not have to register you own `app_id` somewhere.
-The `key` is hashed together with `app_id` using SHA-1 and the `value` may not
+The `key` is hashed together with `app_id` using SHA-1 and the `value` must not
 exceed 2048 bytes.
 Note that you cannot assume that a value returned by the `Get` command was
 really published by an instance of your application.
@@ -42,18 +42,24 @@ Getting Started
 
 4.   Join the DHT
 
-         ./target/release/bulletinboardd -j 94.23.110.187:6666
+         ./target/release/bulletinboard -j 94.23.110.187:6666
 
      94.23.110.187 is currently the only supernode
 
 5.   Access DBus service
 
-         # Put() and Get() for key=0x02 and value=[0x01] (app_id="test")
-         $ dbus-send --session --reply-timeout=60000               --type=method_call --dest=org.manuel.BulletinBoard / org.manuel.BulletinBoard.Put string:"test" array:byte:2 array:byte:1
-         $ dbus-send --session --reply-timeout=60000 --print-reply --type=method_call --dest=org.manuel.BulletinBoard / org.manuel.BulletinBoard.Get string:"test" array:byte:2 
-            array [
-               array of bytes [
-                  01
-               ]
+         # Put() and Get() for key=[0xDE,0xAD] and value=[0xBE, 0xEF] (app_id="test")
+         $ dbus-send --session --type=method_call \
+            --dest=org.manuel.BulletinBoard / \
+            org.manuel.BulletinBoard.Put string:"test" \
+            array:byte:0xDE,0xAD array:byte:0xBE,0xEF
+
+         $ dbus-send --session --reply-timeout=60000 --print-reply \
+            --type=method_call --dest=org.manuel.BulletinBoard / \
+            org.manuel.BulletinBoard.Get string:"test" array:byte:0xDE,0xAD
+         array [
+            array of bytes [
+               be ef
             ]
+         ]
 

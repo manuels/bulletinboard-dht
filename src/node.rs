@@ -1,5 +1,5 @@
 use std::sync::{Arc,Mutex};
-use std::net::{SocketAddr,SocketAddrV4,ToSocketAddrs};
+use std::net::{SocketAddr,SocketAddrV4,SocketAddrV6,ToSocketAddrs};
 use std::io;
 
 use rand;
@@ -31,7 +31,7 @@ impl Node {
 		let addr = try!(it.next().ok_or(err));
 		let addr = utils::ip4or6(addr);
 
-		if !Self::is_ip_valid(&addr) {
+		if !Self::is_address_valid(&addr) {
 			let err = io::Error::new(io::ErrorKind::Other, "no valid IP address");
 			return Err(err);
 		}
@@ -58,9 +58,68 @@ impl Node {
 		*last_seen = SteadyTime::now();
 	}
 
-	fn is_ip_valid(_: &SocketAddr) -> bool {
-		/* TODO */
-		true
+	/// TODO: replace by rust stdlib methods, as soon as they become stable
+	fn is_address_valid(addr: &SocketAddr) -> bool {
+		match addr {
+			&SocketAddr::V4(ref ip) => Self::is_ipv4_global(ip),
+			&SocketAddr::V6(ref ip) => Self::is_ipv6_global(ip),
+		}
+	}
+
+	fn is_ipv4_global(addr: &SocketAddrV4) -> bool {
+		let ip = addr.ip();
+
+		let is_private = match (ip.octets()[0], ip.octets()[1]) {
+			(10, _) => true,
+			(172, b) if b >= 16 && b <= 31 => true,
+			(192, 168) => true,
+			_ => false
+		};
+		let is_loopback = ip.octets()[0] == 127;
+
+		let is_link_local = ip.octets()[0] == 169 && ip.octets()[1] == 254;
+
+		let is_broadcast = ip.octets()[0] == 255 && ip.octets()[1] == 255 &&
+			ip.octets()[2] == 255 && ip.octets()[3] == 255;
+
+        let is_documentation = match(ip.octets()[0], ip.octets()[1], ip.octets()[2], ip.octets()[3]) {
+            (192, _, 2, _) => true,
+            (198, 51, 100, _) => true,
+            (203, _, 113, _) => true,
+            _ => false
+        };
+
+
+		!is_private && !is_loopback && !is_link_local &&
+			!is_broadcast && !is_documentation
+	}
+
+	fn is_ipv6_global(addr: &SocketAddrV6) -> bool {
+		let ip = addr.ip();
+
+		let is_multicast = (ip.segments()[0] & 0xff00) == 0xff00;
+		let is_loopback = ip.segments() == [0, 0, 0, 0, 0, 0, 0, 1];
+		let is_unicast_link_local = (ip.segments()[0] & 0xffc0) == 0xfe80;
+		let is_unicast_site_local = (ip.segments()[0] & 0xffc0) == 0xfec0;
+		let is_unique_local = (ip.segments()[0] & 0xfe00) == 0xfc00;
+
+		let is_unicast_global = !is_multicast
+			&& !is_loopback && !is_unicast_link_local
+			&& !is_unicast_site_local && !is_unique_local;
+
+		let is_multicast_scope_global = if is_multicast {
+            match ip.segments()[0] & 0x000f {
+                14 => true,
+                _ => false,
+            }
+        } else {
+            false
+        };
+
+		match is_multicast_scope_global {
+			true => true,
+			false => is_unicast_global,
+		}
 	}
 }
 

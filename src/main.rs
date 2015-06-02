@@ -90,10 +90,12 @@ fn main() {
 
 	let listen_addr = args.flag_listen.unwrap_or("[::]:0".to_string());
 
-	let supernodes:Vec<String> = load_config(&cfg_path).iter()
+	let mut supernodes:Vec<String> = load_config(&cfg_path).iter()
 		.map(|s| format!("{}", s))
 		.chain(args.flag_join.into_iter())
 		.collect();
+	supernodes.sort_by(|a,b| a.cmp(b));
+	supernodes.dedup();
 
 	let supernodes = supernodes.iter()
 		.map(|s| &s[..])

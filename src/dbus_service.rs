@@ -13,7 +13,7 @@ fn message_item_to_string(item: MessageItem) -> Result<String, (&'static str, St
 		MessageItem::Str(string) => Ok(string),
 		_ => {
 			let err = format!("Cannot convert argument to string");
-			Err(("", err))
+			Err(("org.manuel.Intercom.Invalid", err))
 		}
 	}
 }
@@ -33,7 +33,7 @@ fn message_item_to_byte_vec(item: MessageItem)
 		},
 		_ => {
 			let err = format!("Cannot convert argument (type'{}') to bytearray.", item.type_sig());
-			Err(("", err))
+			Err(("org.manuel.Intercom.Invalid", err))
 		}
 	}
 }
@@ -83,7 +83,7 @@ fn dht_put(mut kad: Kademlia, app_id: MessageItem, key: MessageItem, value: Mess
 
 	kad.put(hash_key, value)
 		.map(|_| vec![])
-		.map_err(|_| ("", "".to_string()))
+		.map_err(|_| ("org.manuel.Intercom.PutFailed", "Put failed".to_string()))
 }
 
 fn dht_remove(mut kad: Kademlia, app_id: MessageItem, key: MessageItem, value: MessageItem)

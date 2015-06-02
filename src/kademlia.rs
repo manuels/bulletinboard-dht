@@ -84,7 +84,7 @@ impl Kademlia {
 		kad
 	}
 
-	pub fn bootstrap<A,B>(addr: A, supernodes: Vec<B>, new_id: Option<NodeId>)
+	pub fn bootstrap<A,B>(addr: A, mut supernodes: Vec<B>, new_id: Option<NodeId>)
 		-> Kademlia
 		where A: ToSocketAddrs, B: ToSocketAddrs
 	{
