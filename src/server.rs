@@ -78,7 +78,7 @@ impl Server {
 	}
 
 	pub fn send_request_ms(&self, addr: &SocketAddr, req: &Message, timeout: u32)
-		-> Message
+		-> Receiver<Message>
 	{
 		let (tx, rx) = channel();
 
@@ -100,7 +100,7 @@ impl Server {
 			}
 		});
 
-		rx.recv().unwrap()
+		rx
 	}
 
 	/// returns an Channel you can use as an Iterator of type [(addr_index, Message), ...]
@@ -131,12 +131,18 @@ impl Server {
 				sem.acquire();
 
 				spawn(move || {
-					let resp = this.send_request_ms(&node.addr, &req, timeout);
-					sem.release();
+					let rx = this.send_request_ms(&node.addr, &req, timeout);
 					
-					if tx.send((node,resp)).is_err() {
-						*(is_rx_dead.lock().unwrap()) = true;
-					}						
+					for resp in rx.iter() {
+						if tx.send((node.clone(),resp.clone())).is_err() {
+							*(is_rx_dead.lock().unwrap()) = true;
+						}
+
+						if resp == Message::Timeout {
+							break;
+						}
+					}
+					sem.release();
 				});
 			}
 		});
@@ -162,6 +168,8 @@ impl Iterator for Server {
 
 			let msg:Result<Message,_> = decode(msg.unwrap());
 
+			debug!("got {:?}", msg);
+
 			// dispatch responses
 			match msg {
 				Ok(Message::Ping(_))
@@ -177,7 +185,7 @@ impl Iterator for Server {
 					let key = (src, resp.cookie().unwrap().clone());
 					let mut pending = self.pending_requests.lock().unwrap();
 					
-					match (*pending).remove(&key) {
+					match (*pending).get(&key) {
 						None => (),
 						Some(tx) => ignore(tx.send(resp.clone())),
 					}

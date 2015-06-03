@@ -72,6 +72,30 @@ impl ClosestNodesIter {
 		cvar.notify_all();
 	}
 
+	pub fn add_node(&self, node: Node) {
+		// wait for locks
+		let processed_nodes = self.processed_nodes.lock().unwrap();
+
+		let &(ref lock, ref cvar) = &*self.unprocessed_nodes;
+		let mut pair = lock.lock().unwrap();
+		let &mut(ref mut unprocessed_nodes, _) = &mut *pair;
+
+		// add nodes
+		if !processed_nodes.contains(&node) {
+			unprocessed_nodes.push(node);
+		}
+
+		// sort nodes
+		let key = &*self.key;
+		unprocessed_nodes.sort_by(|n1,n2| n1.dist(key).cmp(&n2.dist(key)));
+
+		unprocessed_nodes.dedup();
+		unprocessed_nodes.truncate(self.count);
+
+		// done
+		cvar.notify_all();
+	}
+
 	pub fn recv_nodes(&self, rx: Receiver<Vec<Node>>) {
 		// wait for lock
 		let &(ref lock, ref cvar) = &*self.unprocessed_nodes;

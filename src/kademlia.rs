@@ -280,14 +280,18 @@ impl Kademlia {
 				self.server.send_response(src, &Message::Pong(pong));
 			}
 			Message::FindNode(find_node) => {
-				let nodes = self.kbuckets.get_closest_nodes(&find_node.key, K_PARAM);
+				let node_list = self.kbuckets.get_closest_nodes(&find_node.key, K_PARAM);
+				let count = node_list.len();
 
-				let found_node = FoundNode {
-					sender_id: own_id,
-					cookie:    find_node.cookie,
-					nodes:     nodes,
-				};
-				self.server.send_response(src, &Message::FoundNode(found_node));
+				for node in node_list.into_iter() {
+					let found_node = FoundNode {
+						sender_id:  own_id.clone(),
+						cookie:     find_node.cookie.clone(),
+						node_count: count,
+						node:       node,
+					};
+					self.server.send_response(src, &Message::FoundNode(found_node));
+				}
 			},
 			Message::FindValue(find_value) => {
 				let internal = self.internal_values.get(&find_value.key);
@@ -296,23 +300,31 @@ impl Kademlia {
 				let value_list:Vec<Vec<u8>> = internal.into_iter()
 					.chain(external)
 					.collect();
+				let count = value_list.len();
 
 				if value_list.len() > 0 {
-					let found_value = FoundValue {
-						sender_id: own_id,
-						cookie:    find_value.cookie,
-						values:    value_list
-					};
-					self.server.send_response(src, &Message::FoundValue(found_value));
+					for value in value_list.into_iter() {
+						let found_value = FoundValue {
+							sender_id:   own_id.clone(),
+							cookie:      find_value.cookie.clone(),
+							value_count: count,
+							value:       value,
+						};
+						self.server.send_response(src, &Message::FoundValue(found_value));
+					}
 				} else {
-					let nodes = self.kbuckets.get_closest_nodes(&find_value.key, K_PARAM);
+					let node_list = self.kbuckets.get_closest_nodes(&find_value.key, K_PARAM);
+					let count = node_list.len();
 
-					let found_node = FoundNode {
-						sender_id: own_id,
-						cookie:    find_value.cookie,
-						nodes:     nodes,
-					};
-					self.server.send_response(src, &Message::FoundNode(found_node));
+					for node in node_list.into_iter() {
+						let found_node = FoundNode {
+							sender_id:  own_id.clone(),
+							cookie:     find_value.cookie.clone(),
+							node_count: count,
+							node:       node,
+						};
+						self.server.send_response(src, &Message::FoundNode(found_node));
+					}
 				}
 			},
 			Message::Store(store) => {
@@ -362,33 +374,35 @@ impl Kademlia {
 		let rx = self.server.send_many_request(iter.clone(), req, TIMEOUT_MS, ALPHA_PARAM); //chain channels??
 
 		let mut values = vec![];
-		let mut value_nodes = K_PARAM;
+		let mut value_nodes = vec![];
 
 		let mut nodes_online = vec![];
 
 		for (sender, resp) in rx.iter() {
+			debug!("resp={:?}", resp);
 			match (resp, &job) {
 				(Message::FoundNode(found_node), _) => {
 					nodes_online.push(sender);
 
 					let own_id = self.get_own_id();
-					let nodes = found_node.nodes.into_iter().filter(|n| n.node_id != own_id).collect();
-					iter.add_nodes(nodes)
+					let node = found_node.node;
+
+					if (node.node_id != own_id) {
+						iter.add_node(node);
+					}
 				},
 				(Message::FoundValue(found_value), &FindJob::Value) => {
-					nodes_online.push(sender);
+					nodes_online.push(sender.clone());
 
-					debug!("Found {} values", found_value.values.len());
-					if found_value.values.len() > 0 {
-						value_nodes -= 1;
-					}
+					debug!("Found values");
+					value_nodes.push(sender);
+					value_nodes.sort_by(|n1,n2| n1.dist(&key).cmp(&n2.dist(&key)));
+					value_nodes.dedup();
 
-					for v in found_value.values.iter() {
-						values.push(v.clone());
-					}
+					values.push(found_value.value.clone());
 					values.dedup();
 
-					if value_nodes == 0 {
+					if value_nodes.len() == K_PARAM {
 						return Ok(values);
 					}
 				}

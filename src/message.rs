@@ -73,16 +73,18 @@ pub struct FindValue {
 
 #[derive(RustcDecodable, RustcEncodable, PartialEq, Clone, Debug)]
 pub struct FoundNode {
-	pub sender_id: NodeId,
-	pub cookie:    Cookie,
-	pub nodes:     Vec<Node>,
+	pub sender_id:  NodeId,
+	pub cookie:     Cookie,
+	pub node_count: usize,
+	pub node:       Node,
 }
 
 #[derive(RustcDecodable, RustcEncodable, PartialEq, Clone, Debug)]
 pub struct FoundValue {
-	pub sender_id: NodeId,
-	pub cookie:    Cookie,
-	pub values:    Vec<Vec<u8>>,
+	pub sender_id:   NodeId,
+	pub cookie:      Cookie,
+	pub value_count: usize,
+	pub value:       Vec<u8>,
 }
 
 #[derive(RustcDecodable, RustcEncodable, PartialEq, Clone, Debug)]
