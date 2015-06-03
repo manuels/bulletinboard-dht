@@ -56,7 +56,7 @@ impl Server {
 
 	fn send(&self, addr: SocketAddr, req: &Message) -> Receiver<Message>
 	{
-		debug!("Sending {:?}", req);
+		debug!("Sending {:?} to {:?}", req, addr);
 		let (tx, rx) = channel();
 
 		{
@@ -88,7 +88,7 @@ impl Server {
 			(*pending).insert(key, tx.clone());
 		}
 
-		debug!("Sending {:?}", req);
+		debug!("Sending {:?} to {:?}", req, addr);
 		let buf = encode(&req).unwrap().into_bytes();
 		self.sock.send_to(&buf[..], addr).unwrap();
 

@@ -120,8 +120,8 @@ pub fn dbus(kad: Kademlia, dbus_name: &'static str) {
 				vec![Argument::new("app_id", "s"), Argument::new("key", "ay")],
 				vec![Argument::new("value", "aay")],
 				Box::new(|msg| {
-					let app_id = try!(msg.get_items().get(0).ok_or(("", "".to_string()))).clone();
-					let key = try!(msg.get_items().get(1).ok_or(("", "".to_string()))).clone();
+					let app_id = try!(msg.get_items().get(0).ok_or(("org.manuel.BulletinBoard.Invalid", "Invaild app_id".to_string()))).clone();
+					let key = try!(msg.get_items().get(1).ok_or(("org.manuel.BulletinBoard.Invaild", "Invalid key".to_string()))).clone();
 					dht_get(kad.clone(), app_id, key)
 				})
 			),
@@ -129,9 +129,9 @@ pub fn dbus(kad: Kademlia, dbus_name: &'static str) {
 				vec![Argument::new("app_id", "s"), Argument::new("key", "ay"), Argument::new("value", "ay")],
 				vec![],
 				Box::new(|msg| {
-					let app_id = try!(msg.get_items().get(0).ok_or(("", "".to_string()))).clone();
-					let key = try!(msg.get_items().get(1).ok_or(("", "".to_string()))).clone();
-					let value = try!(msg.get_items().get(2).ok_or(("", "".to_string()))).clone();
+					let app_id = try!(msg.get_items().get(0).ok_or(("org.manuel.BulletinBoard.Invaild", "Invaild app_id".to_string()))).clone();
+					let key = try!(msg.get_items().get(1).ok_or(("org.manuel.BulletinBoard.Invaild", "Invalid key".to_string()))).clone();
+					let value = try!(msg.get_items().get(2).ok_or(("org.manuel.BulletinBoard.Invaild", "Invalid value".to_string()))).clone();
 					dht_put(kad.clone(), app_id, key, value)
 				})
 			),
@@ -139,9 +139,9 @@ pub fn dbus(kad: Kademlia, dbus_name: &'static str) {
 				vec![Argument::new("app_id", "s"), Argument::new("key", "ay"), Argument::new("value", "ay")],
 				vec![],
 				Box::new(|msg| {
-					let app_id = try!(msg.get_items().get(0).ok_or(("", "".to_string()))).clone();
-					let key = try!(msg.get_items().get(1).ok_or(("", "".to_string()))).clone();
-					let value = try!(msg.get_items().get(2).ok_or(("", "".to_string()))).clone();
+					let app_id = try!(msg.get_items().get(0).ok_or(("org.manuel.BulletinBoard.Invaild", "Invaild app_id".to_string()))).clone();
+					let key = try!(msg.get_items().get(1).ok_or(("org.manuel.BulletinBoard.Invaild", "Invalid key".to_string()))).clone();
+					let value = try!(msg.get_items().get(2).ok_or(("org.manuel.BulletinBoard.Invaild", "Invalid value".to_string()))).clone();
 					dht_remove(kad.clone(), app_id, key, value)
 				})
 			),
@@ -149,8 +149,8 @@ pub fn dbus(kad: Kademlia, dbus_name: &'static str) {
 				vec![Argument::new("app_id", "s"), Argument::new("key", "ay")],
 				vec![],
 				Box::new(|msg| {
-					let app_id = try!(msg.get_items().get(0).ok_or(("", "".to_string()))).clone();
-					let key = try!(msg.get_items().get(1).ok_or(("", "".to_string()))).clone();
+					let app_id = try!(msg.get_items().get(0).ok_or(("org.manuel.BulletinBoard.Invaild", "Invaild app_id".to_string()))).clone();
+					let key = try!(msg.get_items().get(1).ok_or(("org.manuel.BulletinBoard.Invaild", "Invalid key".to_string()))).clone();
 					dht_remove_key(kad.clone(), app_id, key)
 				})
 			),

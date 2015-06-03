@@ -84,7 +84,7 @@ impl Kademlia {
 		kad
 	}
 
-	pub fn bootstrap<A,B>(addr: A, mut supernodes: Vec<B>, new_id: Option<NodeId>)
+	pub fn bootstrap<A,B>(addr: A, supernodes: Vec<B>, new_id: Option<NodeId>)
 		-> Kademlia
 		where A: ToSocketAddrs, B: ToSocketAddrs
 	{
@@ -348,13 +348,13 @@ impl Kademlia {
 				Message::FindNode(FindNode {
 					cookie:    Self::generate_cookie(),
 					sender_id: self.get_own_id(),
-					key:       key,
+					key:       key.clone(),
 				}),
 			FindJob::Value => {
 				Message::FindValue(FindValue {
 					cookie:    Self::generate_cookie(),
 					sender_id: self.get_own_id(),
-					key:       key,
+					key:       key.clone(),
 				})
 			},
 		};
@@ -364,14 +364,20 @@ impl Kademlia {
 		let mut values = vec![];
 		let mut value_nodes = K_PARAM;
 
-		for (_, resp) in rx.iter() {
+		let mut nodes_online = vec![];
+
+		for (sender, resp) in rx.iter() {
 			match (resp, &job) {
 				(Message::FoundNode(found_node), _) => {
+					nodes_online.push(sender);
+
 					let own_id = self.get_own_id();
 					let nodes = found_node.nodes.into_iter().filter(|n| n.node_id != own_id).collect();
 					iter.add_nodes(nodes)
 				},
 				(Message::FoundValue(found_value), &FindJob::Value) => {
+					nodes_online.push(sender);
+
 					debug!("Found {} values", found_value.values.len());
 					if found_value.values.len() > 0 {
 						value_nodes -= 1;
@@ -393,7 +399,9 @@ impl Kademlia {
 		if values.len() > 0 {
 			Ok(values)
 		} else {
-			Err(iter.get_closest_nodes(K_PARAM))
+			nodes_online.sort_by(|n1,n2| n1.dist(&key).cmp(&n2.dist(&key)));
+			nodes_online.truncate(K_PARAM);
+			Err(nodes_online)
 		}
 	}
 }

@@ -65,6 +65,7 @@ impl ClosestNodesIter {
 		let key = &*self.key;
 		unprocessed_nodes.sort_by(|n1,n2| n1.dist(key).cmp(&n2.dist(key)));
 
+		unprocessed_nodes.dedup();
 		unprocessed_nodes.truncate(self.count);
 
 		// done
@@ -125,6 +126,7 @@ impl Iterator for ClosestNodesIter {
 
 			let mut processed_nodes = self.processed_nodes.lock().unwrap();
 			processed_nodes.sort_by(&desc_dist_order);
+			processed_nodes.dedup();
 
 			let &mut (ref mut unprocessed_nodes, _) = &mut *pair;
 			unprocessed_nodes.sort_by(&asc_dist_order);

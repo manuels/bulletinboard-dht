@@ -59,11 +59,17 @@ impl Node {
 	}
 
 	/// TODO: replace by rust stdlib methods, as soon as they become stable
+	#[cfg(not(test))]
 	fn is_address_valid(addr: &SocketAddr) -> bool {
 		match addr {
 			&SocketAddr::V4(ref ip) => Self::is_ipv4_global(ip),
 			&SocketAddr::V6(ref ip) => Self::is_ipv6_global(ip),
 		}
+	}
+
+	#[cfg(test)]
+	fn is_address_valid(addr: &SocketAddr) -> bool {
+		true
 	}
 
 	fn is_ipv4_global(addr: &SocketAddrV4) -> bool {

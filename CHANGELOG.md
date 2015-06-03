@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.1.3] - 2015-06-03
+### Fixed
+- Just send Store message to nodes that are up
+- Empty dbus errors caused panic!()
+- Do not check remote IP addresses for tests
+
 ## [0.1.2] - 2015-06-02
 ### Fixed
 - Better Dbus errors
