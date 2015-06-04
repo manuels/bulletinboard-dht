@@ -134,7 +134,7 @@ impl Server {
 					let rx = this.send_request_ms(&node.addr, &req, timeout);
 					
 					for resp in rx.iter() {
-						if tx.send((node.clone(),resp.clone())).is_err() {
+						if tx.send((node.clone(), resp.clone())).is_err() {
 							*(is_rx_dead.lock().unwrap()) = true;
 						}
 
@@ -146,6 +146,7 @@ impl Server {
 				});
 			}
 		});
+		sleep_ms(timeout);
 
 		rx
 	}

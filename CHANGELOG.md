@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.2.0] - 2015-06-04
+### Fixed
+- Split responses to individual packets to respect MTU
+
 ## [0.1.3] - 2015-06-03
 ### Fixed
 - Just send Store message to nodes that are up

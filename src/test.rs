@@ -15,10 +15,16 @@ fn test() {
 	let super_addr = ("127.0.0.1", 10000);
 	let kad_super = Kademlia::new_supernode(super_addr, Some(zeros.clone()));
 
-	let mut kad = Kademlia::bootstrap("0.0.0.0:10001", vec![super_addr], Some(ones.clone()));
+	let mut kad1 = Kademlia::bootstrap("0.0.0.0:10001", vec![super_addr], Some(ones.clone()));
+	let mut kad2 = Kademlia::bootstrap("0.0.0.0:10002", vec![super_addr], Some(ones.clone()));
 
+	kad1.put(zeros.clone(), vec![1,2,3]).unwrap();
+	kad2.put(zeros.clone(), vec![4,5,6]).unwrap();
+	kad1.put(zeros.clone(), vec![7,8,9]).unwrap();
 
-	kad.put(zeros.clone(), vec![1,2,3]).unwrap();
-	//sleep_ms(5000);
-	assert_eq!(kad.get(zeros), vec![vec![1,2,3]]);
+	let mut result = kad1.get(zeros.clone());
+	let mut result = kad1.get(zeros);
+	result.sort_by(|a,b| a.cmp(b));
+	result.dedup();
+	assert_eq!(result, vec![vec![1,2,3], vec![4,5,6], vec![7,8,9]]);
 }
