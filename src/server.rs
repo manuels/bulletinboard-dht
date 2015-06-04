@@ -32,7 +32,7 @@ impl Clone for Server {
 
 impl Server {
 	pub fn new(sock: UdpSocket) -> Server {
-		debug!("Listening on {:?}", sock.local_addr());
+		info!("Listening on {:?}", sock.local_addr());
 		Server {
 			sock: sock.try_clone().unwrap(),
 			pending_requests: Arc::new(Mutex::new(HashMap::new())),
@@ -91,7 +91,7 @@ impl Server {
 
 		debug!("Sending {:?} to {:?}", req, addr);
 		let buf = encode(&req).unwrap().into_bytes();
-		self.sock.send_to(&buf[..], addr).unwrap();
+		ignore(self.sock.send_to(&buf[..], addr));
 
 		spawn(move || {
 			sleep_ms(timeout);
