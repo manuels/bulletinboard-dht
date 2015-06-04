@@ -48,6 +48,7 @@ impl Server {
 		self.send(addr, req);
 	}
 
+	#[allow(dead_code)]
 	pub fn send_request(&self, addr: SocketAddr, req: &Message) -> Message
 	{
 		let rx = self.send(addr, req);
@@ -184,7 +185,7 @@ impl Iterator for Server {
 				| Ok(ref resp @ Message::FoundNode(_))
 				| Ok(ref resp @ Message::FoundValue(_)) => {
 					let key = (src, resp.cookie().unwrap().clone());
-					let mut pending = self.pending_requests.lock().unwrap();
+					let pending = self.pending_requests.lock().unwrap();
 					
 					match (*pending).get(&key) {
 						None => (),

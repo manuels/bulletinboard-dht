@@ -37,6 +37,7 @@ enum FindJob {
 }
 
 impl Kademlia {
+	#[allow(dead_code)]
 	pub fn new_supernode<A: ToSocketAddrs>(addr: A, own_id: Option<NodeId>) -> Kademlia {
 		let own_id = own_id.or_else(|| Some(Node::generate_id()));
 		Self::create(addr, own_id)
@@ -387,7 +388,7 @@ impl Kademlia {
 					let own_id = self.get_own_id();
 					let node = found_node.node;
 
-					if (node.node_id != own_id) {
+					if node.node_id != own_id {
 						iter.add_node(node);
 					}
 				},

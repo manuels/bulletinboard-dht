@@ -28,6 +28,7 @@ impl ClosestNodesIter {
 		this
 	}
 
+	#[allow(dead_code)]
 	pub fn get_closest_nodes(&self, n: usize) -> Vec<Node> {
 		let processed_nodes = self.processed_nodes.lock().unwrap();
 
@@ -96,6 +97,7 @@ impl ClosestNodesIter {
 		cvar.notify_all();
 	}
 
+	#[allow(dead_code)]
 	pub fn recv_nodes(&self, rx: Receiver<Vec<Node>>) {
 		// wait for lock
 		let &(ref lock, ref cvar) = &*self.unprocessed_nodes;
