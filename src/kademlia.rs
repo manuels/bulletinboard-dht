@@ -400,6 +400,7 @@ impl Kademlia {
 					value_nodes.dedup();
 
 					values.push(found_value.value.clone());
+					values.sort_by(|a,b| a.cmp(b));
 					values.dedup();
 
 					if value_nodes.len() == K_PARAM {
