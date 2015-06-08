@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.2.1] - 2015-06-08
+### Changed
+- Discard old values if a node publishes a new value
+
 ## [0.2.0] - 2015-06-04
 ### Fixed
 - Split responses to individual packets to respect MTU

@@ -330,7 +330,8 @@ impl Kademlia {
 			},
 			Message::Store(store) => {
 				if store.value.len() <= MAX_VALUE_LEN {
-					self.external_values.put(store.key, store.value);
+					let sender = (src, store.sender_id);
+					self.external_values.put(store.key, sender, store.value);
 				}
 			}
 			Message::Timeout
@@ -421,3 +422,4 @@ impl Kademlia {
 		}
 	}
 }
+ 

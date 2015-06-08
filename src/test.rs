@@ -26,5 +26,5 @@ fn test() {
 	let mut result = kad1.get(zeros);
 	result.sort_by(|a,b| a.cmp(b));
 	result.dedup();
-	assert_eq!(result, vec![vec![1,2,3], vec![4,5,6], vec![7,8,9]]);
+	assert_eq!(result, vec![vec![4,5,6], vec![7,8,9]]);
 }
