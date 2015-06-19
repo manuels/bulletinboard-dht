@@ -42,7 +42,7 @@ impl ClosestNodesIter {
 		}
 
 		let key = &self.key;
-		nodes.sort_by(|n1,n2| n1.dist(key).cmp(&n2.dist(key)));
+		nodes.sort_by(asc_dist_order!(key));
 		nodes.truncate(n);
 
 		nodes
@@ -64,8 +64,8 @@ impl ClosestNodesIter {
 
 		// sort nodes
 		let key = &*self.key;
-		unprocessed_nodes.sort_by(|n1,n2| n1.dist(key).cmp(&n2.dist(key)));
 
+		unprocessed_nodes.sort_by(asc_dist_order!(key));
 		unprocessed_nodes.dedup();
 		unprocessed_nodes.truncate(self.count);
 
@@ -88,8 +88,7 @@ impl ClosestNodesIter {
 
 		// sort nodes
 		let key = &*self.key;
-		unprocessed_nodes.sort_by(|n1,n2| n1.dist(key).cmp(&n2.dist(key)));
-
+		unprocessed_nodes.sort_by(asc_dist_order!(key));
 		unprocessed_nodes.dedup();
 		unprocessed_nodes.truncate(self.count);
 
@@ -131,8 +130,6 @@ impl Iterator for ClosestNodesIter {
 
 	fn next(&mut self) -> Option<Self::Item> {
 		let key = &*self.key;
-		let desc_dist_order = |n1:&Node, n2:&Node| n1.dist(key).cmp(&n2.dist(key));
-		let asc_dist_order = |n1:&Node, n2:&Node| desc_dist_order(n1,n2).reverse();
 
 		loop {
 			// wait for lock
@@ -151,11 +148,12 @@ impl Iterator for ClosestNodesIter {
 			}
 
 			let mut processed_nodes = self.processed_nodes.lock().unwrap();
-			processed_nodes.sort_by(&desc_dist_order);
+			processed_nodes.sort_by(asc_dist_order!(key));
 			processed_nodes.dedup();
 
 			let &mut (ref mut unprocessed_nodes, _) = &mut *pair;
-			unprocessed_nodes.sort_by(&asc_dist_order);
+			unprocessed_nodes.sort_by(desc_dist_order!(key));
+			unprocessed_nodes.dedup();
 
 			let closest_dist = processed_nodes.get(self.count-1).map(|n| n.dist(key));
 

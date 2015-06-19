@@ -25,7 +25,6 @@ pub struct Kademlia {
 	own_id: Arc<Mutex<NodeId>>,
 	server: Server,
 	kbuckets: KBuckets,
-	internal_values: storage::InternalStorage,
 	external_values: storage::ExternalStorage,
 	TTL: Duration,
 }
@@ -55,7 +54,6 @@ impl Kademlia {
 			own_id:   own_id.clone(),
 			server:   server.clone(),
 			kbuckets: KBuckets::new(own_id.clone()),
-			internal_values: storage::InternalStorage::new(),
 			external_values: storage::ExternalStorage::new(ttl),
 			TTL:      ttl,
 		};
@@ -149,22 +147,7 @@ impl Kademlia {
 			return Err(value);
 		}
 
-		self.internal_values.put(key.clone(), value.clone());
-		self.publish(key.clone(), value.clone());
-
-		let this = self.clone();
-		let key = key.clone();
-		let value = value.clone();
-		spawn(move || {
-			loop {
-				if !this.internal_values.contains(&key, &value) {
-					break
-				};
-
-				this.publish(key.clone(), value.clone());
-				sleep_ms((this.TTL.num_milliseconds()/2) as u32);
-			}
-		});
+		self.publish(key, value);
 		Ok(())
 	}
 
@@ -179,14 +162,6 @@ impl Kademlia {
 		for n in self.find_node(key.clone()) {
 			self.server.hit_and_run(n.addr.clone(), &msg);
 		}
-	}
-
-	pub fn remove(&mut self, key: &NodeId, value: &Vec<u8>) {
-		self.internal_values.remove(key, value)
-	}
-
-	pub fn remove_key(&mut self, key: &NodeId) {
-		self.internal_values.remove_key(key)
 	}
 
 	fn generate_cookie() -> Cookie {
@@ -295,15 +270,11 @@ impl Kademlia {
 				}
 			},
 			Message::FindValue(find_value) => {
-				let internal = self.internal_values.get(&find_value.key);
-				let external = self.external_values.get(&find_value.key);
-
-				let value_list:Vec<Vec<u8>> = internal.into_iter()
-					.chain(external)
-					.collect();
-				let count = value_list.len();
+				let value_list = self.external_values.get(&find_value.key);
 
 				if value_list.len() > 0 {
+					let count = value_list.len();
+
 					for value in value_list.into_iter() {
 						let found_value = FoundValue {
 							sender_id:   own_id.clone(),
@@ -395,10 +366,12 @@ impl Kademlia {
 				},
 				(Message::FoundValue(found_value), &FindJob::Value) => {
 					nodes_online.push(sender.clone());
+					nodes_online.sort_by(asc_dist_order!(key));
+					nodes_online.dedup();
 
 					debug!("Found values");
 					value_nodes.push(sender);
-					value_nodes.sort_by(|n1,n2| n1.dist(&key).cmp(&n2.dist(&key)));
+					value_nodes.sort_by(asc_dist_order!(key));
 					value_nodes.dedup();
 
 					values.push(found_value.value.clone());
@@ -416,8 +389,8 @@ impl Kademlia {
 		if values.len() > 0 {
 			Ok(values)
 		} else {
-			nodes_online.sort_by(|n1,n2| n1.dist(&key).cmp(&n2.dist(&key)));
 			nodes_online.truncate(K_PARAM);
+			
 			Err(nodes_online)
 		}
 	}

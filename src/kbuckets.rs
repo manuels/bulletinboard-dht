@@ -87,8 +87,7 @@ impl KBuckets {
 	pub fn get_closest_nodes(&self, key: &NodeId, n: usize) -> Vec<Node> {
 		let mut nodes = self.get_nodes();
 
-		let asc_dist_order = |n1:&Node, n2:&Node| n1.dist(key).cmp(&n2.dist(key));
-		nodes.sort_by(asc_dist_order);
+		nodes.sort_by(asc_dist_order!(key));
 		nodes.truncate(n);
 
 		nodes.clone()

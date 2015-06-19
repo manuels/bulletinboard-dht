@@ -9,12 +9,13 @@ extern crate docopt;
 #[cfg(feature="dbus")]
 extern crate dbus;
 
+#[macro_use]
+mod node;
 mod utils;
 mod server;
 mod message;
 mod kademlia;
 mod kbuckets;
-mod node;
 mod closest_nodes_iter;
 mod storage;
 

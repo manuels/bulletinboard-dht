@@ -86,29 +86,6 @@ fn dht_put(mut kad: Kademlia, app_id: MessageItem, key: MessageItem, value: Mess
 		.map_err(|_| ("org.manuel.Intercom.PutFailed", "Put failed".to_string()))
 }
 
-fn dht_remove(mut kad: Kademlia, app_id: MessageItem, key: MessageItem, value: MessageItem)
-	-> Result<Vec<MessageItem>, (&'static str, String)>
-{
-	let app_id = try!(message_item_to_string(app_id));
-	let key   = try!(message_item_to_byte_vec(key));
-	let value = try!(message_item_to_byte_vec(value));
-	let hash_key = hash(app_id, &key);
-
-	kad.remove(&hash_key, &value);
-	Ok(vec![])
-}
-
-fn dht_remove_key(mut kad: Kademlia, app_id: MessageItem, key: MessageItem)
-	-> Result<Vec<MessageItem>, (&'static str, String)>
-{
-	let app_id = try!(message_item_to_string(app_id));
-	let key   = try!(message_item_to_byte_vec(key));
-	let hash_key = hash(app_id, &key);
-
-	kad.remove_key(&hash_key);
-	Ok(vec![])
-}
-
 pub fn dbus(kad: Kademlia, dbus_name: &'static str) {
 	let c = Connection::get_private(BusType::Session).unwrap();
 	c.register_name(dbus_name, NameFlag::ReplaceExisting as u32).unwrap();
@@ -133,25 +110,6 @@ pub fn dbus(kad: Kademlia, dbus_name: &'static str) {
 					let key = try!(msg.get_items().get(1).ok_or(("org.manuel.BulletinBoard.Invaild", "Invalid key".to_string()))).clone();
 					let value = try!(msg.get_items().get(2).ok_or(("org.manuel.BulletinBoard.Invaild", "Invalid value".to_string()))).clone();
 					dht_put(kad.clone(), app_id, key, value)
-				})
-			),
-			Method::new("Remove",
-				vec![Argument::new("app_id", "s"), Argument::new("key", "ay"), Argument::new("value", "ay")],
-				vec![],
-				Box::new(|msg| {
-					let app_id = try!(msg.get_items().get(0).ok_or(("org.manuel.BulletinBoard.Invaild", "Invaild app_id".to_string()))).clone();
-					let key = try!(msg.get_items().get(1).ok_or(("org.manuel.BulletinBoard.Invaild", "Invalid key".to_string()))).clone();
-					let value = try!(msg.get_items().get(2).ok_or(("org.manuel.BulletinBoard.Invaild", "Invalid value".to_string()))).clone();
-					dht_remove(kad.clone(), app_id, key, value)
-				})
-			),
-			Method::new("RemoveKey",
-				vec![Argument::new("app_id", "s"), Argument::new("key", "ay")],
-				vec![],
-				Box::new(|msg| {
-					let app_id = try!(msg.get_items().get(0).ok_or(("org.manuel.BulletinBoard.Invaild", "Invaild app_id".to_string()))).clone();
-					let key = try!(msg.get_items().get(1).ok_or(("org.manuel.BulletinBoard.Invaild", "Invalid key".to_string()))).clone();
-					dht_remove_key(kad.clone(), app_id, key)
 				})
 			),
 		],

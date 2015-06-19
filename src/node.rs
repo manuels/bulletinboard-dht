@@ -16,6 +16,14 @@ pub const NODEID_BYTELEN:usize = 160/8;
 //pub type NodeId = [u8; NODEID_BYTELEN/8];
 pub type NodeId = Vec<u8>;
 
+macro_rules! asc_dist_order {
+	($key:expr) => (|n1: &Node, n2: &Node| n1.dist(&$key).cmp(&n2.dist(&$key)))
+}
+
+macro_rules! desc_dist_order {
+	($key:expr) => (|n1: &Node, n2: &Node| asc_dist_order!($key)(n1,n2).reverse())
+}
+
 #[derive(Clone, Debug)]
 pub struct Node {
 	pub addr:      SocketAddr,
@@ -136,19 +144,19 @@ impl PartialEq for Node {
 }
 
 impl ToJson for Node {
-    fn to_json(&self) -> Json {
-	let addr = match self.addr {
-		SocketAddr::V4(addr) => {
-			let ip = addr.ip().octets().iter().fold(String::new(), |s,&i| format!("{}.{}", s, i));
-			format!("{}:{}", &ip[1..], addr.port())
-		},
-		SocketAddr::V6(addr) => {
-			let ip = addr.ip().segments().iter().fold(String::new(), |s,&i| format!("{}:{}", s, i));
-			format!("[{}]:{}", &ip[1..], addr.port())
-		},
-	};
+	fn to_json(&self) -> Json {
+		let addr = match self.addr {
+			SocketAddr::V4(addr) => {
+				let ip = addr.ip().octets().iter().fold(String::new(), |s,&i| format!("{}.{}", s, i));
+				format!("{}:{}", &ip[1..], addr.port())
+			},
+			SocketAddr::V6(addr) => {
+				let ip = addr.ip().segments().iter().fold(String::new(), |s,&i| format!("{}:{}", s, i));
+				format!("[{}]:{}", &ip[1..], addr.port())
+			},
+		};
 
-	Json::Array(vec![addr.to_json(), self.node_id.to_json()])
+		Json::Array(vec![addr.to_json(), self.node_id.to_json()])
     }
 }
 
@@ -237,4 +245,21 @@ fn ipv6_coding() {
 	let decoded = json::decode(&encoded).unwrap();
 
 	assert_eq!(node, decoded);
+}
+
+#[test]
+fn asc_order() {
+	let id0xff = vec![0xff; NODEID_BYTELEN];
+	let id0x00 = vec![0x00; NODEID_BYTELEN];
+
+	let node0x00 = Node::new("127.0.0.1:2134", id0x00.clone()).unwrap();
+	let node0xff = Node::new("127.0.0.1:2134", id0xff.clone()).unwrap();
+
+	let mut nodes = vec![node0xff.clone(), node0x00.clone()];
+
+	nodes.sort_by(asc_dist_order!(id0x00));
+	assert_eq!(nodes, vec![node0x00.clone(), node0xff.clone()]);
+
+	nodes.sort_by(desc_dist_order!(id0x00));
+	assert_eq!(nodes, vec![node0xff, node0x00]);
 }

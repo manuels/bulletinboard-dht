@@ -1,5 +1,10 @@
 # Change Log
 
+## [0.3.0] - 2015-06-19
+### Changed
+- Change network protocol (for IPs)
+- Remove re-publishing (and thus Remove() and RemoveKey())
+
 ## [0.2.1] - 2015-06-08
 ### Changed
 - Discard old values if a node publishes a new value
