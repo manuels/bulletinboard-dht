@@ -130,7 +130,16 @@ impl Kademlia {
 	}
 
 	pub fn get(&self, key: NodeId) -> Vec<Vec<u8>> {
-		self.find_value(key).unwrap_or(vec![])
+		match self.find_value(key.clone()) {
+			Ok(values) => {
+				info!("Found {:?} values for {:?}", values.len(), key);
+				values
+			},
+			Err(nodes) => {
+				warn!("Found NO values for {:?} on {:?} nodes", key, nodes.len());
+				vec![]
+			}
+		}
 	}
 
 	pub fn get_own_id(&self) -> NodeId {
@@ -159,8 +168,16 @@ impl Kademlia {
 			value:     value,
 		});
 
-		for n in self.find_node(key.clone()) {
+		let nodes = self.find_node(key.clone());
+
+		for n in nodes.clone() {
 			self.server.hit_and_run(n.addr.clone(), &msg);
+		}
+
+		if nodes.len() > 0 {
+			info!("Published {:?} on {:?} nodes.", key, nodes.len());
+		} else {
+			warn!("Could not find any nodes to publish {:?}!", key);
 		}
 	}
 
@@ -324,8 +341,9 @@ impl Kademlia {
 	}
 
 	pub fn find(&self, job: FindJob, key: NodeId) -> Result<Vec<Vec<u8>>,Vec<Node>> {
-		let closest = self.kbuckets.get_closest_nodes(&key, K_PARAM);
+		let closest = self.kbuckets.get_nodes();
 
+		info!("Find: {:?} initial nodes", closest.len());
 		let iter = ClosestNodesIter::new(key.clone(), K_PARAM, closest);
 
 		let req = match job {
@@ -351,39 +369,50 @@ impl Kademlia {
 
 		let mut nodes_online = vec![];
 
-		for (sender, resp) in rx.iter() {
-			debug!("resp={:?}", resp);
-			match (resp, &job) {
-				(Message::FoundNode(found_node), _) => {
-					nodes_online.push(sender);
+		let mut fails = 0;
+		while fails < TIMEOUT_MS/250 {
+			for (sender, resp) in rx.iter() {
+				debug!("resp={:?}", resp);
+				fails = 0;
 
-					let own_id = self.get_own_id();
-					let node = found_node.node;
+				match (resp, &job) {
+					(Message::FoundNode(found_node), _) => {
+						nodes_online.push(sender.clone());
+						nodes_online.sort_by(asc_dist_order!(key));
+						nodes_online.dedup();
 
-					if node.node_id != own_id {
-						iter.add_node(node);
+						let own_id = self.get_own_id();
+						let node = found_node.node;
+
+						if node.node_id != own_id {
+							iter.add_node(node);
+						}
+					},
+					(Message::FoundValue(found_value), &FindJob::Value) => {
+						debug!("Found values");
+
+						nodes_online.push(sender.clone());
+						nodes_online.sort_by(asc_dist_order!(key));
+						nodes_online.dedup();
+
+						value_nodes.push(sender);
+						value_nodes.sort_by(asc_dist_order!(key));
+						value_nodes.dedup();
+
+						values.push(found_value.value.clone());
+						values.sort_by(|a,b| a.cmp(b));
+						values.dedup();
+
+						if value_nodes.len() == K_PARAM {
+							return Ok(values);
+						}
 					}
-				},
-				(Message::FoundValue(found_value), &FindJob::Value) => {
-					nodes_online.push(sender.clone());
-					nodes_online.sort_by(asc_dist_order!(key));
-					nodes_online.dedup();
-
-					debug!("Found values");
-					value_nodes.push(sender);
-					value_nodes.sort_by(asc_dist_order!(key));
-					value_nodes.dedup();
-
-					values.push(found_value.value.clone());
-					values.sort_by(|a,b| a.cmp(b));
-					values.dedup();
-
-					if value_nodes.len() == K_PARAM {
-						return Ok(values);
-					}
+					_ => (),
 				}
-				_ => (),
 			}
+
+			sleep_ms(250);
+			fails += 1;
 		}
 
 		if values.len() > 0 {

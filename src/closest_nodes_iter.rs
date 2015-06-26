@@ -157,6 +157,9 @@ impl Iterator for ClosestNodesIter {
 
 			let closest_dist = processed_nodes.get(self.count-1).map(|n| n.dist(key));
 
+			debug!("Processed: {}", processed_nodes.len());
+			debug!("Unprocessed: {}", unprocessed_nodes.len());
+			
 			match unprocessed_nodes.pop() {
 				None => return None,
 				Some(node) => {
