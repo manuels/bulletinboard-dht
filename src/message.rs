@@ -1,3 +1,9 @@
+use std::ops::Deref;
+
+use rustc_serialize::base64;
+use rustc_serialize::base64::{ToBase64,FromBase64};
+use rustc_serialize::{Encodable,Decodable,Encoder,Decoder};
+
 use node::{Node, NodeId};
 
 pub const COOKIE_BYTELEN:usize = 160/8;
@@ -84,7 +90,7 @@ pub struct FoundValue {
 	pub sender_id:   NodeId,
 	pub cookie:      Cookie,
 	pub value_count: usize,
-	pub value:       Vec<u8>,
+	pub value:       Value,
 }
 
 #[derive(RustcDecodable, RustcEncodable, PartialEq, Clone, Debug)]
@@ -92,5 +98,53 @@ pub struct Store {
 	pub sender_id: NodeId,
 	pub cookie:    Cookie,
 	pub key:       NodeId,
-	pub value:     Vec<u8>,
+	pub value:     Value,
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct Value {
+	data: Vec<u8>
+}
+
+impl Value {
+	pub fn new(data: Vec<u8>) -> Value {
+		Value { data: data }
+	}
+}
+
+impl Deref for Value {
+	type Target = Vec<u8>;
+
+	fn deref<'a>(&'a self) -> &'a Vec<u8> {
+		&self.data
+	}
+}
+
+impl Encodable for Value {
+	fn encode<E: Encoder>(&self, enc: &mut E) -> Result<(), E::Error> {
+		let base64 = self.data.to_base64(base64::STANDARD);
+
+		enc.emit_str(&base64[..])
+	}
+}
+
+impl Decodable for Value {
+	fn decode<D: Decoder>(dec: &mut D) -> Result<Self, D::Error> {
+		let base64 = try!(dec.read_str());
+		let data = try!(base64.from_base64()
+			.map_err(|_| dec.error("error decoding base64 Value")));
+
+		Ok(Value::new(data))
+	}
+}
+
+#[test]
+fn test_value_coding() {
+	let actual = Value::new(vec![1,2,3]);
+
+	let encoded = json::encode(&actual).unwrap();
+	warn!("{:?}", encoded);
+    let expected: Value = json::decode(&encoded).unwrap();
+
+    assert_eq!(actual, expected);
 }

@@ -10,7 +10,7 @@ use server::Server;
 use kbuckets::KBuckets;
 use node::{Node, NodeId};
 use closest_nodes_iter::ClosestNodesIter;
-use message::{Message,Cookie,COOKIE_BYTELEN};
+use message::{Message,Value,Cookie,COOKIE_BYTELEN};
 use message::{Ping,Pong, FindNode, FoundNode, FindValue, FoundValue, Store};
 use utils::ignore;
 
@@ -165,7 +165,7 @@ impl Kademlia {
 			sender_id: self.get_own_id(),
 			cookie:    Self::generate_cookie(),
 			key:       key.clone(),
-			value:     value,
+			value:     Value::new(value),
 		});
 
 		let nodes = self.find_node(key.clone());
@@ -207,7 +207,7 @@ impl Kademlia {
 
 		let rx = self.server.send_many_request(node_list.into_iter(), req, TIMEOUT_MS, ALPHA_PARAM);
 		
-		for (node, resp) in rx.iter() {
+		for (node, resp) in rx {
 			match resp {
 				Message::Pong(_) => (),
 				_ => {
@@ -297,7 +297,7 @@ impl Kademlia {
 							sender_id:   own_id.clone(),
 							cookie:      find_value.cookie.clone(),
 							value_count: count,
-							value:       value,
+							value:       Value::new(value),
 						};
 						self.server.send_response(src, &Message::FoundValue(found_value));
 					}
@@ -319,7 +319,7 @@ impl Kademlia {
 			Message::Store(store) => {
 				if store.value.len() <= MAX_VALUE_LEN {
 					let sender = (src, store.sender_id);
-					self.external_values.put(store.key, sender, store.value);
+					self.external_values.put(store.key, sender, (*store.value).clone());
 				}
 			}
 			Message::Timeout
@@ -369,11 +369,11 @@ impl Kademlia {
 
 		let mut nodes_online = vec![];
 
-		let mut fails = 0;
-		while fails < TIMEOUT_MS/250 {
+		let mut failed = 0;
+		while failed < TIMEOUT_MS/250 {
 			for (sender, resp) in rx.iter() {
 				debug!("resp={:?}", resp);
-				fails = 0;
+				failed = 0;
 
 				match (resp, &job) {
 					(Message::FoundNode(found_node), _) => {
@@ -399,7 +399,7 @@ impl Kademlia {
 						value_nodes.sort_by(asc_dist_order!(key));
 						value_nodes.dedup();
 
-						values.push(found_value.value.clone());
+						values.push((*found_value.value).clone());
 						values.sort_by(|a,b| a.cmp(b));
 						values.dedup();
 
@@ -412,7 +412,7 @@ impl Kademlia {
 			}
 
 			sleep_ms(250);
-			fails += 1;
+			failed += 1;
 		}
 
 		if values.len() > 0 {

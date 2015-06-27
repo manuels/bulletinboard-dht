@@ -4,7 +4,7 @@ use env_logger;
 
 use node::NODEID_BYTELEN;
 use kademlia::Kademlia;
-use std::thread::spawn;
+use std::thread::{spawn,sleep_ms};
 
 #[test]
 fn test() {
@@ -51,6 +51,7 @@ fn test_concurrent() {
 	});
 	kad1.put(ones.clone(), vec![4,5,6]).unwrap();
 
+	sleep_ms(500);
 	let mut result = kad1.get(zeros.clone());
 	assert_eq!(result, vec![vec![1,2,3]]);
 	

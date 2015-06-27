@@ -1,5 +1,13 @@
 # Change Log
 
+## [0.4.0] - 2015-06-27
+### Fixed
+- Transfer values in base64-encoding to save space in messages (MTU)
+
+## [0.3.1] - 2015-06-26
+### Fixed
+- Major race condition bug in find_value/find_node
+
 ## [0.3.0] - 2015-06-19
 ### Changed
 - Change network protocol (for IPs)
