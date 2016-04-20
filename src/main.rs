@@ -1,6 +1,5 @@
 extern crate rustc_serialize;
 extern crate rand;
-extern crate time;
 #[macro_use] extern crate log;
 extern crate env_logger;
 extern crate crypto;
@@ -26,11 +25,12 @@ mod dbus_service;
 mod test;
 
 use std::env;
-use std::thread::{spawn,sleep_ms};
+use std::thread::{spawn,sleep};
 use std::fs::File;
 use std::path::{PathBuf,Path};
 use std::io::{Write,Read};
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use docopt::Docopt;
 use rustc_serialize::json;
@@ -118,6 +118,6 @@ fn main() {
 			cfg_file.write(contents.as_bytes()).unwrap_or(0);
 		}
 
-		sleep_ms(5*60*1000);
+		sleep(Duration::from_secs(5*60));
 	}
 }

@@ -131,7 +131,8 @@ pub fn dbus(kad: Kademlia, dbus_name: &'static str) {
 
 #[cfg(test)]
 mod tests {
-	use std::thread::{sleep_ms,spawn};
+	use std::thread::{sleep,spawn};
+	use std::time::Duration;
 
 	use dbus::{Connection,BusType,Message,MessageItem};
 
@@ -159,7 +160,7 @@ mod tests {
 			super::dbus(kad, name);
 		});
 
-		sleep_ms(500);
+		sleep(Duration::from_millis(500));
 		dbus_put(dbus_name.clone(), &app_id, "foo".bytes().collect(), "bar".bytes().collect());
 		
 		let actual = dbus_get(dbus_name.clone(), &app_id, "foo".bytes().collect());
@@ -186,7 +187,7 @@ mod tests {
 		let mut m = Message::new_method_call(dbus_name, "/", "org.manuel.BulletinBoard", "Get").unwrap();
 		m.append_items(&[MessageItem::Str(app_id.clone()), byte_vec_to_message_item(key)]);
 
-		let mut r = c.send_with_reply_and_block(m, 30000).unwrap();
+		let r = c.send_with_reply_and_block(m, 30000).unwrap();
 		let mut reply = r.get_items();
 		let res = reply.pop().unwrap();
 

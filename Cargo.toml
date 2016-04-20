@@ -1,6 +1,6 @@
 [package]
 name = "bulletinboard"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Manuel Schölling <manuel.schoelling@gmx.de>"]
 description = "A general-purpose DHT"
 homepage = "https://github.com/manuels/bulletinboard-dht"
@@ -9,18 +9,17 @@ license = " GPL-2.0"
 readme = "./README.md"
 
 [dependencies]
-rand = "*"
-rustc-serialize = "*"
-time = "*"
-log = "*"
-env_logger = "*"
-rust-crypto = "*"
-docopt = "*"
+rand = "0.3.14"
+rustc-serialize = "0.3.19"
+log = "0.3.6"
+env_logger = "0.3.3"
+rust-crypto = "0.2.35"
+docopt = "0.6.80"
 
 [features]
 default = ["dbus_service"]
 "dbus_service" = ["dbus"]
 
 [dependencies.dbus]
-version = "*"
+version = "0.3.2"
 optional = true

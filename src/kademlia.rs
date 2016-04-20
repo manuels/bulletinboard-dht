@@ -1,9 +1,8 @@
-use std::thread::{spawn,sleep_ms};
+use std::io;
+use std::thread::{spawn,sleep};
 use std::net::{UdpSocket,SocketAddr,ToSocketAddrs};
 use std::sync::{Arc,Mutex};
-use std::io;
-
-use time::Duration;
+use std::time::Duration;
 
 use storage;
 use server::Server;
@@ -46,7 +45,7 @@ impl Kademlia {
 		let udp = UdpSocket::bind(addr).unwrap();
 		let server = Server::new(udp);
 
-		let ttl = Duration::minutes(15);
+		let ttl = Duration::from_secs(15*60);
 		let own_id = own_id.unwrap_or_else(|| Node::generate_id());
 		let own_id = Arc::new(Mutex::new(own_id));
 
@@ -73,7 +72,7 @@ impl Kademlia {
 		spawn(move || {
 			// look for a random ID from time to time
 			loop {
-				sleep_ms(60*1000);
+				sleep(Duration::from_secs(60));
 
 				let node_id = Node::generate_id();
 				this.find_node(node_id);
@@ -340,7 +339,7 @@ impl Kademlia {
 		self.find(FindJob::Value, key)
 	}
 
-	pub fn find(&self, job: FindJob, key: NodeId) -> Result<Vec<Vec<u8>>,Vec<Node>> {
+	fn find(&self, job: FindJob, key: NodeId) -> Result<Vec<Vec<u8>>,Vec<Node>> {
 		let closest = self.kbuckets.get_nodes();
 
 		info!("Find: {:?} initial nodes", closest.len());
@@ -411,7 +410,7 @@ impl Kademlia {
 				}
 			}
 
-			sleep_ms(250);
+			sleep(Duration::from_millis(250));
 			failed += 1;
 		}
 

@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use rustc_serialize::base64;
+use rustc_serialize::{base64,json};
 use rustc_serialize::base64::{ToBase64,FromBase64};
 use rustc_serialize::{Encodable,Decodable,Encoder,Decoder};
 
@@ -144,7 +144,8 @@ fn test_value_coding() {
 
 	let encoded = json::encode(&actual).unwrap();
 	warn!("{:?}", encoded);
-    let expected: Value = json::decode(&encoded).unwrap();
+	let expected: Value = json::decode(&encoded).unwrap();
 
-    assert_eq!(actual, expected);
+	assert_eq!(actual, expected);
 }
+

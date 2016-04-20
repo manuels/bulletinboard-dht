@@ -4,11 +4,13 @@ use env_logger;
 
 use node::NODEID_BYTELEN;
 use kademlia::Kademlia;
-use std::thread::{spawn,sleep_ms};
+
+use std::thread::{spawn,sleep};
+use std::time::Duration;
 
 #[test]
 fn test() {
-	env_logger::init();
+	let _ = env_logger::init();
 
 	let zeros = vec![0x00; NODEID_BYTELEN];
 	let ones = vec![0xFF; NODEID_BYTELEN];
@@ -23,7 +25,7 @@ fn test() {
 	kad2.put(zeros.clone(), vec![4,5,6]).unwrap();
 	kad1.put(zeros.clone(), vec![7,8,9]).unwrap();
 
-	let mut result = kad1.get(zeros.clone());
+	let result = kad1.get(zeros.clone());
 	let mut result = kad1.get(zeros);
 	result.sort_by(|a,b| a.cmp(b));
 	result.dedup();
@@ -33,7 +35,7 @@ fn test() {
 
 #[test]
 fn test_concurrent() {
-	env_logger::init();
+	let _ = env_logger::init();
 
 	let zeros = vec![0x00; NODEID_BYTELEN];
 	let zeros1 = zeros.clone();
@@ -43,7 +45,7 @@ fn test_concurrent() {
 	let kad_super = Kademlia::new_supernode(super_addr, Some(zeros.clone()));
 
 	let mut kad1 = Kademlia::bootstrap("0.0.0.0:40001", vec![super_addr], Some(ones.clone()));
-	let mut kad2 = Kademlia::bootstrap("0.0.0.0:40002", vec![super_addr], Some(ones.clone()));
+	let kad2 = Kademlia::bootstrap("0.0.0.0:40002", vec![super_addr], Some(ones.clone()));
 
 	let mut kad11 = kad1.clone();
 	spawn(move || {
@@ -51,10 +53,10 @@ fn test_concurrent() {
 	});
 	kad1.put(ones.clone(), vec![4,5,6]).unwrap();
 
-	sleep_ms(500);
-	let mut result = kad1.get(zeros.clone());
+	sleep(Duration::from_millis(500));
+	let result = kad1.get(zeros.clone());
 	assert_eq!(result, vec![vec![1,2,3]]);
 	
-	let mut result = kad1.get(ones.clone());
+	let result = kad1.get(ones.clone());
 	assert_eq!(result, vec![vec![4,5,6]]);
 }

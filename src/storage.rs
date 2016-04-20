@@ -1,14 +1,15 @@
 use std::sync::{Arc,Mutex};
 use std::collections::HashMap;
-use time::{SteadyTime,Duration};
+use std::time::Duration;
 use std::net::SocketAddr;
+use std::time::Instant;
 
 use node::NodeId;
 
 #[allow(non_snake_case)]
 #[derive(Clone)]
 pub struct ExternalStorage {
-	storage: Arc<Mutex<HashMap<NodeId, Vec<(Vec<u8>, (SocketAddr, NodeId), SteadyTime)>>>>,
+	storage: Arc<Mutex<HashMap<NodeId, Vec<(Vec<u8>, (SocketAddr, NodeId), Instant)>>>>,
 	TTL:     Duration,
 }
 
@@ -30,7 +31,7 @@ impl ExternalStorage {
 			.position(|&(ref v, ref s, _)| *v == value || *s == sender)
 			.map(|pos| s.remove(pos));
 		
-		let now = SteadyTime::now();
+		let now = Instant::now();
 		s.push((value, sender, now));
 
 		storage.insert(key, s);
@@ -49,7 +50,7 @@ impl ExternalStorage {
 	}
 
 	fn cleanup(&mut self) {
-		let now = SteadyTime::now();
+		let now = Instant::now();
 		let mut storage = self.storage.lock().unwrap();
 
 		for (_, values) in storage.iter_mut() {

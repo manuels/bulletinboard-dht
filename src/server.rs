@@ -1,4 +1,5 @@
-use std::thread::{spawn,sleep_ms};
+use std::time::Duration;
+use std::thread::{spawn,sleep};
 use std::sync::mpsc::{Sender,Receiver,channel};
 use std::sync::{Arc,Mutex};
 use std::str;
@@ -94,7 +95,7 @@ impl Server {
 		ignore(self.sock.send_to(&buf[..], addr));
 
 		spawn(move || {
-			sleep_ms(timeout);
+			sleep(Duration::from_millis(timeout as u64));
 			match tx.send(Message::Timeout) {
 				Ok(_) => (),
 				Err(_) => (),
@@ -147,7 +148,7 @@ impl Server {
 				});
 			}
 		});
-		sleep_ms(timeout);
+		sleep(Duration::from_millis(timeout as u64));
 
 		rx
 	}

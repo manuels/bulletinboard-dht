@@ -1,9 +1,12 @@
 use std::sync::{Arc,Mutex};
-use std::net::{SocketAddr,SocketAddrV4,SocketAddrV6,ToSocketAddrs};
+use std::time::Instant;
+use std::net::{SocketAddr,ToSocketAddrs};
 use std::io;
 
+#[cfg(not(test))]
+use std::net::{SocketAddrV4,SocketAddrV6};
+
 use rand;
-use time::SteadyTime;
 use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 #[cfg(test)]
 use rustc_serialize::json;
@@ -28,7 +31,7 @@ macro_rules! desc_dist_order {
 pub struct Node {
 	pub addr:      SocketAddr,
 	pub node_id:   NodeId,
-	pub last_seen: Arc<Mutex<SteadyTime>>,
+	pub last_seen: Arc<Mutex<Instant>>,
 }
 
 impl Node {
@@ -47,7 +50,7 @@ impl Node {
 		let node = Node {
 			addr:      addr,
 			node_id:   node_id,
-			last_seen: Arc::new(Mutex::new(SteadyTime::now())),
+			last_seen: Arc::new(Mutex::new(Instant::now())),
 		};
 
 		Ok(node)
@@ -63,7 +66,7 @@ impl Node {
 
 	pub fn update_last_seen(&mut self) {
 		let mut last_seen = self.last_seen.lock().unwrap();
-		*last_seen = SteadyTime::now();
+		*last_seen = Instant::now();
 	}
 
 	/// TODO: replace by rust stdlib methods, as soon as they become stable
@@ -76,10 +79,11 @@ impl Node {
 	}
 
 	#[cfg(test)]
-	fn is_address_valid(addr: &SocketAddr) -> bool {
+	fn is_address_valid(_addr: &SocketAddr) -> bool {
 		true
 	}
 
+	#[cfg(not(test))]
 	fn is_ipv4_global(addr: &SocketAddrV4) -> bool {
 		let ip = addr.ip();
 
@@ -108,6 +112,7 @@ impl Node {
 			!is_broadcast && !is_documentation
 	}
 
+	#[cfg(not(test))]
 	fn is_ipv6_global(addr: &SocketAddrV6) -> bool {
 		let ip = addr.ip();
 

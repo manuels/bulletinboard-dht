@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.4.0] - 2016-04-20
+### Fixed
+- Update for Rust v1.8
+
 ## [0.4.0] - 2015-06-27
 ### Fixed
 - Transfer values in base64-encoding to save space in messages (MTU)
