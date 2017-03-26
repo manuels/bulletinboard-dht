@@ -1,6 +1,6 @@
 [package]
 name = "bulletinboard"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Manuel Schölling <manuel.schoelling@gmx.de>"]
 description = "A general-purpose DHT"
 homepage = "https://github.com/manuels/bulletinboard-dht"
