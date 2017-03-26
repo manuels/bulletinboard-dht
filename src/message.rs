@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use rustc_serialize::{base64,json};
+use rustc_serialize::base64;
 use rustc_serialize::base64::{ToBase64,FromBase64};
 use rustc_serialize::{Encodable,Decodable,Encoder,Decoder};
 
