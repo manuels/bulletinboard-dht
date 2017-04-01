@@ -57,6 +57,20 @@ impl KBuckets {
 		None
 	}
 
+	pub fn estimate_peers_in_network(&self) -> usize {
+        let mut estimate = 2;
+
+        for (i, bucket) in self.buckets.iter().rev().enumerate() {
+            let len = bucket.lock().unwrap().len();
+            if len == 0 {
+                return estimate;
+            }
+            estimate = len * 2usize.pow(i as u32);
+        }
+
+        return estimate;
+	}
+
 	pub fn get_bucket(&self, node_id: &NodeId) -> Option<MutexGuard<Vec<Node>>> {
 		self.get_bucket_idx(&node_id)
 			.and_then(|i| self.buckets.get(i))

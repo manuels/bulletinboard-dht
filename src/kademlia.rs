@@ -253,6 +253,9 @@ impl Kademlia {
 					.map_err(|sender| self.ping_or_replace_with(sender)));
 			}
 		}
+
+        info!("Approximately {} peers in the network.", self.kbuckets.estimate_peers_in_network());
+
 		Ok(())
 	}
 
