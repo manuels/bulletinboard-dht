@@ -24,6 +24,7 @@ matrix:
     - env: TARGET=i686-unknown-linux-gnu
     - env: TARGET=i686-unknown-linux-musl
     - env: TARGET=x86_64-unknown-linux-gnu
+    - env: TARGET=x86_64-linux-gnu
     - env: TARGET=x86_64-unknown-linux-musl
 
     # OSX
@@ -60,9 +61,15 @@ before_install: set -e
 
 install:
   - sh ci/install.sh
+  - sudo apt-get install -y libdbus-1-dev
   - source ~/.cargo/env || true
 
 script:
+  - echo $PKG_CONFIG_PATH
+  - ls $PKG_CONFIG_PATH
+  - pkg-config --libs --cflags dbus-1
+  - ls /usr/include/dbus-1.0
+  - ls /usr/lib/x86_64-linux-gnu/dbus-1.0/include
   - bash ci/script.sh
 
 after_script: set +e
@@ -76,7 +83,7 @@ deploy:
   # - Encrypt it: `travis encrypt YOUR_TOKEN`
   # - Paste the output down here
   api_key:
-    secure: QSjlNzBb2GTH9y77PH4TgcRQKynkZ4EN6vZslghhrn2Zbw9CuJ7k5SpthQG1VzWpR8NLBJZugkXbNvOT/aYTGZk8QdGi+Cr1o9bo5+cWMo5jrRci4eWNRq9KUXq5ewdUlPMwzQk3fkkMwV+AYt2UE28eLxcEe8qopcajVSHZyGif5c1k26wQ0aLzoqZL92FUekMUhk/zU99osA2cknsHlGffZLZ4Dlqn8tQqacY9ZNBsdEuypnWX5nF+GChnfVxJCAohHiRuMMvv0o1aOxPFrA5KA6iD7ZxpruXqdG3wPO4HRWpE01tyT7RFn86nxyKjrKNStyP4XPksKyoC9UDZOR3Gp3b9hsSyyQXKCIKrZ1vazJJyub5sT+VUBZqn3rVZO2xsHxjouOTqJtwZcgvSm3Yj22m0/rqqrkbFZQpn9Xl45OuOgFSxjrUtyOU5KGUDr493SPEKU/Ob+jW05cnWIYXhTCNejz7A0Jw4aG6Pg33y6yiZ8ton3+mXeTDijw0YwKh6zl25craPwtPjtaZB0cXF8qHWpQGu0+Ch7zuwbzxBXc4EvCT7mLXhAv7CMx8OdMIMpC9pLdmoupUIfY6swzcQnHp3W6bTFYoCpnIbSNigtSf/FqYSNnsgoBViMOBWyWXjsfbyBe1P6KT+2KijuzhuWaBtD1n4vv7StHU5Zw4=
+    secure: nBJxHTPTZ2d1bs5+6y2YcV2kbeb4Dd+RW+k+qM7Ft7YNqJvNklTdpuzhNP7/B4mQg6RL7XXG4YyTOIt1n7Q3Uo82hrCmjGfHhcswTUQf+dvVfIhZX6fY0jfWEsobCX7JkvGClQeCaj5/rHYEvqYmXxzQI/bI4kU2A+OIzigNx10yr7WGzyBvy5vfIwkWv7IBEBJPkKauNA/Y+Er3Y1XtPkcTv0qU4jZCCfdWeALZkjPRss3lsASfv7VbRFdLMlTUWXgKoEJjlG+crRJV6mC94GPgtCj/npuMTP7Wjephb7kqYCxKd5pGXcAgwywk7xUImuLKcSiCC6AQm2iw6unUURklQ+YLaE0YJPUmaY6XLCU0g1BAOdLgAWzld2NCdLuIND9UnMSp3CCFoZ67VvxJIOQFOcr1Dhyk2VneXu2zMiHPz/4bp7RHCbY2VJF6d3Ay6muh0KIb6B+vc+K/YlOzu8ur2te42nJsldkktC63mfeuG6V4t0s0I5nor/aNLdGmT3V8uzfOYrJ9/TP3H9xQm26K7Fl7K7fXzXQCTzSPdLPxRVeXeLU7H38dTOf58W/++ZBvy6Sf0LCgoRG3V8t3FUquG3RClB1yYERxMNvvl5Cm4o5eRGgS2W39ci69VVXfswIKk0MJWRUG/O/79P95aRk6YSaqGDlHe7NYmKIhTWk=
   file_glob: true
   file: $CRATE_NAME-$TRAVIS_TAG-$TARGET.*
   on:
