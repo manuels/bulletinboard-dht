@@ -6,6 +6,8 @@ use rustc_serialize::{Encodable,Decodable,Encoder,Decoder};
 
 use node::{Node, NodeId};
 
+use json;
+
 pub const COOKIE_BYTELEN:usize = 160/8;
 
 //pub type Cookie = [u8; COOKIE_LEN/8];
