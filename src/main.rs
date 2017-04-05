@@ -41,7 +41,7 @@ use node::Node;
 use dbus_service::dbus;
 
 static USAGE: &'static str = "
-Usage: bulletinboardd [-c <path>] [-l <listen_addr>] [-j <join_addr>...]
+Usage: bulletinboard [-c <path>] [-l <listen_addr>] [-j <join_addr>...]
 
 Options:
     -h, --help                   Show this message.
@@ -95,6 +95,7 @@ fn main() {
 		.map(|s| format!("{}", s))
 		.chain(args.flag_join.into_iter())
 		.collect();
+	supernodes.push("[2a00:1630:66:2a9::6db4]:59056".to_string());
 	supernodes.sort_by(|a,b| a.cmp(b));
 	supernodes.dedup();
 
