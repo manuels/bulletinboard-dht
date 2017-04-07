@@ -156,7 +156,7 @@ impl ToJson for Node {
 				format!("{}:{}", &ip[1..], addr.port())
 			},
 			SocketAddr::V6(addr) => {
-				let ip = addr.ip().segments().iter().fold(String::new(), |s,&i| format!("{}:{}", s, i));
+				let ip = addr.ip().segments().iter().fold(String::new(), |s,&i| format!("{}:{:x}", s, i));
 				format!("[{}]:{}", &ip[1..], addr.port())
 			},
 		};
@@ -180,11 +180,11 @@ impl Decodable for Node {
 		}
 
 		let addr = addr_str.to_socket_addrs()
-				.map_err(|_| d.error("Invalid IP address"))
+				.map_err(|_| d.error(format!("Invalid IP address '{}'", addr_str).as_str()))
 				.and_then(|mut it| it.next().ok_or(d.error("Invalid IP address")));
 		
 		Node::new(try!(addr),node_id)
-			.map_err(|_| d.error("Invalid IP address"))
+			.map_err(|_| d.error(format!("Invalid IP address '{}'", addr_str).as_str()))
 	}
 }
 
