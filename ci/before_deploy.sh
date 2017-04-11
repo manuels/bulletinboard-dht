@@ -17,9 +17,18 @@ main() {
 
     test -f Cargo.lock || cargo generate-lockfile
 
+    if [ $TARGET = x86_64-unknown-linux-gnu ]; then
+        FEATURES='--features dbus_service'
+        COMPILER=cargo
+        eval `dbus-launch --sh-syntax`
+    else
+        FEATURES='--no-default-features'
+        COMPILER=cross
+    fi
+
     # TODO Update this to build the artifacts that matter to you
     #cross rustc --bin bulletinboard --target $TARGET --release -- -C lto
-    cross build --target $TARGET --no-default-features --release
+    $COMPILER build --target $TARGET $FEATURES --release
 
     # TODO Update this to package the right artifacts
     cp target/$TARGET/release/bulletinboard $stage/

@@ -4,15 +4,24 @@ set -ex
 
 # TODO This is the "test phase", tweak it as you see fit
 main() {
-    cross build --target $TARGET --no-default-features
-    cross build --target $TARGET --release --no-default-features
+    if [ $TARGET = x86_64-unknown-linux-gnu ]; then
+        FEATURES='--features dbus_service'
+        COMPILER=cargo
+        eval `dbus-launch --sh-syntax`
+    else
+        FEATURES='--no-default-features'
+        COMPILER=cross
+    fi
+
+    $COMPILER build --target $TARGET $FEATURES
+    $COMPILER build --target $TARGET --release $FEATURES
 
     if [ ! -z $DISABLE_TESTS ]; then
         return
     fi
 
-    cross test --target $TARGET --no-default-features
-    cross test --target $TARGET --release --no-default-features
+    $COMPILER test --target $TARGET $FEATURES
+    $COMPILER test --target $TARGET --release $FEATURES
 }
 
 # we don't run the "test phase" when doing deploys
