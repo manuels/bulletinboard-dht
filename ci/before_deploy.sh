@@ -34,7 +34,34 @@ main() {
     cp target/$TARGET/release/bulletinboard $stage/
 
     cd $stage
-    tar czf $src/$CRATE_NAME-$TRAVIS_TAG-$TARGET.tar.gz *
+    if [ "$FEATURES" = '--features dbus_service' ]; then
+        NAME='with_dbus_service'
+    else
+        NAME='without_dbus_service'
+    fi
+    tar czf $src/$CRATE_NAME-$TRAVIS_TAG-$TARGET-$NAME.tar.gz *
+    #sudo apt-get install -y ruby ruby-dev build-essential
+    sudo apt-get install -y ruby-dev build-essential rpm
+
+    git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+    cd ~/.rbenv && src/configure && make -C src
+    export PATH="$HOME/.rbenv/bin:$PATH"
+    #~/.rbenv/bin/rbenv init
+    eval "$(rbenv init -)"
+    ~/.rbenv/bin/rbenv rehash
+    which gem
+
+    gem install --no-ri --no-rdoc ffi
+    gem install --no-ri --no-rdoc fpm
+    fpm -s dir -t deb -n $CRATE_NAME -v $TRAVIS_TAG \
+        $src/org.manuel.BulletinBoard.service=/usr/share/dbus-1/services/ \
+        $src/target/$TARGET/release/bulletinboard=/usr/bin/
+    fpm -s dir -t rpm -n $CRATE_NAME -v $TRAVIS_TAG \
+        $src/org.manuel.BulletinBoard.service=/usr/share/dbus-1/services/ \
+        $src/target/$TARGET/release/bulletinboard=/usr/bin/
+    cp *deb $src
+    cp *rpm $src
+
     cd $src
 
     rm -rf $stage
