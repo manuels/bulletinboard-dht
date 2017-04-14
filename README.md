@@ -8,7 +8,7 @@ Introduction
 
 BulletinBoard is a general-purpose Distributed-Hash-Table based on [Kademlia](http://pdos.csail.mit.edu/~petar/papers/maymounkov-kademlia-lncs.pdf).
 
-The interface is provided as a D-Bus service via these commands (see [example below](#usage)):
+The interface is provided as a D-Bus service via these commands (see [example below](#usage) or [python example](https://github.com/manuels/bulletinboard-dht/tree/master/examples/example.py)):
 
     Service: org.manuel.BulletinBoard
       Object Path: /
