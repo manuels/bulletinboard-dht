@@ -28,18 +28,18 @@ Installation
 1) **Download**
 
          # Debian/Ubuntu
-         wget 'https://github.com/manuels/bulletinboard-dht/releases/download/0.4.6/bulletinboard_0.4.6_amd64.deb'
+         wget 'https://github.com/manuels/bulletinboard-dht/releases/download/v0.4.5.15/bulletinboard_0.4.5.15_amd64.deb'
 
          # Fedora
-         wget 'https://github.com/manuels/bulletinboard-dht/releases/download/0.4.6/bulletinboard-0.4.6-1.x86_64.rpm'
+         wget 'https://github.com/manuels/bulletinboard-dht/releases/download/v0.4.5.15/bulletinboard-0.4.5.15-1.x86_64.rpm'
 
 2) **Install bulletinboard**
 
          # Debian/Ubuntu
-         sudo dpkg -i bulletinboard_0.4.6_amd64.deb
+         sudo dpkg -i bulletinboard_0.4.5.15_amd64.deb
 
          # Fedora
-         sudo rpm -ivh bulletinboard-0.4.6-1.x86_64.rpm
+         sudo rpm -ivh bulletinboard-0.4.5.15-1.x86_64.rpm
 
 Usage
 -----
