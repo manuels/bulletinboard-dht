@@ -183,7 +183,7 @@ impl Kademlia {
 	fn generate_cookie() -> Cookie {
 		let cookie = Node::generate_id();
 		assert_eq!(cookie.len(), COOKIE_BYTELEN);
-		cookie
+		cookie.to_vec()
 	}
 
 	fn ping_or_replace_with(&mut self, replacement: Node) {

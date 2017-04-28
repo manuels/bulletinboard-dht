@@ -11,8 +11,7 @@ use utils;
 
 pub const NODEID_BYTELEN:usize = 160/8;
 
-//pub type NodeId = [u8; NODEID_BYTELEN/8];
-pub type NodeId = Vec<u8>;
+pub type NodeId = [u8; NODEID_BYTELEN];
 
 macro_rules! asc_dist_order {
 	($key:expr) => (|n1: &Node, n2: &Node| n1.dist(&$key).cmp(&n2.dist(&$key)))
@@ -62,7 +61,7 @@ impl Node {
 		for i in id.iter_mut() {
 			*i = rand::random::<u8>();
 		}
-		id.to_vec()
+		id
 	}
 
 	pub fn update_last_seen(&mut self) {
@@ -174,7 +173,7 @@ pub fn xor(a: &NodeId, b: &NodeId) -> NodeId {
 		dist[i] = x^y;
 	}
 
-	dist.to_vec()
+	dist
 }
 
 impl Node {
@@ -211,29 +210,6 @@ fn dist() {
 		    [0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 		     0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01])
 }
-
-/*
-TODO
-#[test]
-fn ipv4_coding() {
-	let node = Node::new("127.0.0.1:2134", vec![9;NODEID_BYTELEN]).unwrap();
-
-	let encoded = json::encode(&node).unwrap();
-	let decoded = json::decode(&encoded).unwrap();
-
-	assert_eq!(node, decoded);
-}
-
-#[test]
-fn ipv6_coding() {
-	let node = Node::new("[::1]:2134", vec![1;NODEID_BYTELEN]).unwrap();
-
-	let encoded = json::encode(&node).unwrap();
-	let decoded = json::decode(&encoded).unwrap();
-
-	assert_eq!(node, decoded);
-}
-*/
 
 #[test]
 fn asc_order() {

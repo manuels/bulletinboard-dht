@@ -7,6 +7,7 @@ use crypto::digest::Digest;
 use crypto::sha1::Sha1;
 
 use kademlia::Kademlia;
+use node::{NodeId, NODEID_BYTELEN};
 
 fn message_item_to_string(item: MessageItem) -> Result<String, (&'static str, String)> {
 	match item {
@@ -46,7 +47,7 @@ fn byte_vec_to_message_item(vec: Vec<u8>) -> MessageItem {
 	MessageItem::Array(items, Cow::Borrowed("y"))
 }
 
-fn hash(app_id: String, data: &[u8]) -> Vec<u8> {
+fn hash(app_id: String, data: &[u8]) -> NodeId {
 	let mut hasher = Sha1::new();
 
 	let mut output = vec![0x0; hasher.output_bytes()];
@@ -54,7 +55,9 @@ fn hash(app_id: String, data: &[u8]) -> Vec<u8> {
 	hasher.input(data);
 	hasher.result(&mut output[..]);
 
-	output
+        let mut hash = [0u8; NODEID_BYTELEN];
+	hash.clone_from_slice(&output[..NODEID_BYTELEN]);
+	hash
 }
 
 fn dht_get(kad: Kademlia, app_id: MessageItem, key: MessageItem)
