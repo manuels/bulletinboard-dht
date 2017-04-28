@@ -12,8 +12,8 @@ use std::time::Duration;
 fn test() {
 	let _ = env_logger::init();
 
-	let zeros = vec![0x00; NODEID_BYTELEN];
-	let ones = vec![0xFF; NODEID_BYTELEN];
+	let zeros = [0x00; NODEID_BYTELEN];
+	let ones = [0xFF; NODEID_BYTELEN];
 
 	let super_addr = ("127.0.0.1", 30000);
 	let kad_super = Kademlia::new_supernode(super_addr, Some(zeros.clone()));
@@ -37,9 +37,9 @@ fn test() {
 fn test_concurrent() {
 	let _ = env_logger::init();
 
-	let zeros = vec![0x00; NODEID_BYTELEN];
+	let zeros = [0x00; NODEID_BYTELEN];
 	let zeros1 = zeros.clone();
-	let ones = vec![0xFF; NODEID_BYTELEN];
+	let ones = [0xFF; NODEID_BYTELEN];
 
 	let super_addr = ("127.0.0.1", 40000);
 	let kad_super = Kademlia::new_supernode(super_addr, Some(zeros.clone()));

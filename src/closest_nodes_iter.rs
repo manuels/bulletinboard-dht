@@ -185,7 +185,7 @@ impl Iterator for ClosestNodesIter {
 
 #[test]
 fn empty() {
-	let key = vec![0; NODEID_BYTELEN];
+	let key = [0; NODEID_BYTELEN];
 	let mut iter = ClosestNodesIter::new(key, 10, vec![]);
 
 	assert_eq!(iter.next(), None);
@@ -193,9 +193,9 @@ fn empty() {
 
 #[test]
 fn clone() {
-	let key = vec![0; NODEID_BYTELEN];
+	let key = [0; NODEID_BYTELEN];
 
-	let node = Node::new("127.0.0.1:2134", vec![0x00; NODEID_BYTELEN]).unwrap();
+	let node = Node::new("127.0.0.1:2134", [0x00; NODEID_BYTELEN]).unwrap();
 	let mut iter1 = ClosestNodesIter::new(key, 10, vec![node.clone()]);
 	let mut iter2 = iter1.clone();
 
@@ -207,17 +207,17 @@ fn clone() {
 #[test]
 fn order() {
 	for count in 2..4 {
-		let key = vec![0; NODEID_BYTELEN];
+		let key = [0; NODEID_BYTELEN];
 
-		let node0xff = Node::new("127.0.0.1:2134", vec![0xff; NODEID_BYTELEN]).unwrap();
+		let node0xff = Node::new("127.0.0.1:2134", [0xff; NODEID_BYTELEN]).unwrap();
 
 		let mut iter = ClosestNodesIter::new(key, count, vec![node0xff.clone()]);
 
-		let node0x77 = Node::new("127.0.0.1:2134", vec![0x77; NODEID_BYTELEN]).unwrap();
+		let node0x77 = Node::new("127.0.0.1:2134", [0x77; NODEID_BYTELEN]).unwrap();
 		iter.clone().add_nodes(vec![node0x77.clone()]);
 		assert_eq!(iter.next(), Some(node0x77));
 
-		let node0x00 = Node::new("127.0.0.1:2134", vec![0x00; NODEID_BYTELEN]).unwrap();
+		let node0x00 = Node::new("127.0.0.1:2134", [0x00; NODEID_BYTELEN]).unwrap();
 		iter.clone().add_nodes(vec![node0x00.clone()]);
 		assert_eq!(iter.next(), Some(node0x00));
 

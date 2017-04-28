@@ -184,8 +184,8 @@ mod tests {
 	fn test() {
 		let app_id = "test".to_string();
 
-		let zeros = vec![0x00; NODEID_BYTELEN];
-		let ones = vec![0xFF; NODEID_BYTELEN];
+		let zeros = [0x00; NODEID_BYTELEN];
+		let ones = [0xFF; NODEID_BYTELEN];
 
 		let super_addr = ("127.0.0.1", 20000);
 		let _ = Kademlia::new_supernode(super_addr, Some(zeros.clone()));
