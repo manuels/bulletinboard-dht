@@ -1,7 +1,8 @@
 use std::io;
 use std::thread::{spawn,sleep};
 use std::net::{UdpSocket,SocketAddr,ToSocketAddrs};
-use std::sync::{Arc,Mutex};
+use std::sync::{Arc,Mutex,RwLock};
+use std::collections::HashMap;
 use std::time::Duration;
 
 use storage;
@@ -22,6 +23,7 @@ pub const MAX_VALUE_LEN: usize = 2048;
 #[derive(Clone)]
 pub struct Kademlia {
 	own_id: Arc<Mutex<NodeId>>,
+	stored_values: Arc<RwLock<HashMap<NodeId, (u64, Vec<u8>)>>>,
 	server: Server,
 	kbuckets: KBuckets,
 	external_values: storage::ExternalStorage,
@@ -52,6 +54,7 @@ impl Kademlia {
 		let kad = Kademlia {
 			own_id:   own_id.clone(),
 			server:   server.clone(),
+			stored_values: Arc::new(RwLock::new(HashMap::new())),
 			kbuckets: KBuckets::new(own_id.clone()),
 			external_values: storage::ExternalStorage::new(ttl),
 			TTL:      ttl,
@@ -76,6 +79,26 @@ impl Kademlia {
 
 				let node_id = Node::generate_id();
 				this.find_node(node_id);
+			}
+		});
+
+		let mut this = kad.clone();
+		spawn(move || {
+			// publish stored values again and again
+			let stored_values = this.stored_values.clone();
+			loop {
+				sleep(Duration::from_secs(5 * 60));
+
+				let mut store = stored_values.write().unwrap();
+
+				for (key, t) in store.iter_mut() {
+					let (ref mut lifetime, ref value) = *t;
+					*lifetime = lifetime.saturating_sub(5 * 60);
+
+					if *lifetime > 0 {
+						this.put(*key, value.clone()).unwrap();
+					}
+				}
 			}
 		});
 
@@ -157,6 +180,15 @@ impl Kademlia {
 
 		self.publish(key, value);
 		Ok(())
+	}
+
+	pub fn store(&mut self, key: NodeId, value: Vec<u8>, lifetime: u64) -> Result<(),Vec<u8>> {
+		{
+			let mut store = self.stored_values.write().unwrap();
+			store.insert(key.clone(), (lifetime, value.clone()));
+		}
+
+		self.put(key, value)
 	}
 
 	fn publish(&self, key: NodeId, value: Vec<u8>) {

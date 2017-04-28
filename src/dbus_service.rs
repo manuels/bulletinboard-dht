@@ -9,6 +9,16 @@ use crypto::sha1::Sha1;
 use kademlia::Kademlia;
 use node::{NodeId, NODEID_BYTELEN};
 
+fn message_item_to_u64(item: MessageItem) -> Result<u64, (&'static str, String)> {
+	match item {
+		MessageItem::UInt64(v) => Ok(v),
+		_ => {
+			let err = format!("Cannot convert argument to unsigned int64");
+			Err(("org.manuel.Intercom.Invalid", err))
+		}
+	}
+}
+
 fn message_item_to_string(item: MessageItem) -> Result<String, (&'static str, String)> {
 	match item {
 		MessageItem::Str(string) => Ok(string),
@@ -89,6 +99,20 @@ fn dht_put(mut kad: Kademlia, app_id: MessageItem, key: MessageItem, value: Mess
 		.map_err(|_| ("org.manuel.Intercom.PutFailed", "Put failed".to_string()))
 }
 
+fn dht_store(mut kad: Kademlia, app_id: MessageItem, key: MessageItem, value: MessageItem, lifetime: MessageItem)
+	-> Result<Vec<MessageItem>, (&'static str, String)>
+{
+	let app_id = try!(message_item_to_string(app_id));
+	let key   = try!(message_item_to_byte_vec(key));
+	let value = try!(message_item_to_byte_vec(value));
+	let lifetime = try!(message_item_to_u64(lifetime));
+	let hash_key = hash(app_id, &key);
+
+	kad.store(hash_key, value, lifetime)
+		.map(|_| vec![])
+		.map_err(|_| ("org.manuel.Intercom.StoreFailed", "Store failed".to_string()))
+}
+
 pub fn dbus(kad: Kademlia, dbus_name: &'static str) {
 	let c = Connection::get_private(BusType::Session).unwrap();
 	c.register_name(dbus_name, NameFlag::ReplaceExisting as u32).unwrap();
@@ -113,6 +137,17 @@ pub fn dbus(kad: Kademlia, dbus_name: &'static str) {
 					let key = try!(msg.get_items().get(1).ok_or(("org.manuel.BulletinBoard.Invaild", "Invalid key".to_string()))).clone();
 					let value = try!(msg.get_items().get(2).ok_or(("org.manuel.BulletinBoard.Invaild", "Invalid value".to_string()))).clone();
 					dht_put(kad.clone(), app_id, key, value)
+				})
+			),
+			Method::new("Store",
+				vec![Argument::new("app_id", "s"), Argument::new("key", "ay"), Argument::new("value", "ay"), Argument::new("lifetime", "t")],
+				vec![],
+				Box::new(|msg| {
+					let app_id = try!(msg.get_items().get(0).ok_or(("org.manuel.BulletinBoard.Invaild", "Invaild app_id".to_string()))).clone();
+					let key = try!(msg.get_items().get(1).ok_or(("org.manuel.BulletinBoard.Invaild", "Invalid key".to_string()))).clone();
+					let value = try!(msg.get_items().get(2).ok_or(("org.manuel.BulletinBoard.Invaild", "Invalid value".to_string()))).clone();
+					let lifetime = try!(msg.get_items().get(3).ok_or(("org.manuel.BulletinBoard.Invaild", "Invalid value".to_string()))).clone();
+					dht_store(kad.clone(), app_id, key, value, lifetime)
 				})
 			),
 		],
