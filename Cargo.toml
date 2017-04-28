@@ -10,11 +10,14 @@ readme = "./README.md"
 
 [dependencies]
 rand = "0.3.14"
-rustc-serialize = "0.3.19"
 log = "0.3.6"
 env_logger = "0.3.3"
 rust-crypto = "0.2.35"
 docopt = "0.6.80"
+serde = "0.9"
+serde_derive = "0.9"
+bincode = "1.0.0-alpha7"
+rustc-serialize = "*"
 
 [features]
 default = ["dbus_service"]

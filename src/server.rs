@@ -7,7 +7,7 @@ use std::io;
 use std::net::{SocketAddr,UdpSocket};
 use std::collections::HashMap;
 
-use rustc_serialize::json::{encode,decode};
+use bincode::{serialize, deserialize, Bounded};
 
 use utils::ignore;
 use utils;
@@ -67,7 +67,7 @@ impl Server {
 			(*pending).insert(key, tx);
 		}
 
-		let buf = encode(&req).unwrap().into_bytes();
+		let buf = serialize(&req, Bounded(2048)).unwrap();
 		self.sock.send_to(&buf[..], addr).unwrap();
 
 		rx
@@ -75,7 +75,7 @@ impl Server {
 
 	pub fn send_response(&self, addr: SocketAddr, resp: &Message)
 	{
-		let buf = encode(&resp).unwrap().into_bytes();
+		let buf = serialize(&resp, Bounded(2048)).unwrap();
 		self.sock.send_to(&buf[..], addr).unwrap();
 	}
 
@@ -91,7 +91,7 @@ impl Server {
 		}
 
 		debug!("Sending {:?} to {:?}", req, addr);
-		let buf = encode(&req).unwrap().into_bytes();
+		let buf = serialize(&req, Bounded(2048)).unwrap();
 		ignore(self.sock.send_to(&buf[..], addr));
 
 		spawn(move || {
@@ -163,13 +163,9 @@ impl Iterator for Server {
 		loop {
 			let (len, src) = self.sock.recv_from(&mut buf).unwrap();
 			let src = utils::ip4or6(src);
-			let msg = str::from_utf8(&buf[..len]);
+			let msg = &buf[..len];
 
-			if msg.is_err() {
-				continue
-			}
-
-			let msg:Result<Message,_> = decode(msg.unwrap());
+			let msg:Result<Message,_> = deserialize(msg);
 
 			debug!("got {:?}", msg);
 

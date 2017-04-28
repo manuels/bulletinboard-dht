@@ -1,9 +1,17 @@
-extern crate rustc_serialize;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+extern crate bincode;
+
 extern crate rand;
 #[macro_use] extern crate log;
 extern crate env_logger;
 extern crate crypto;
 extern crate docopt;
+
+extern crate rustc_serialize;
+
+use bincode::{serialize, deserialize, Bounded};
 
 #[cfg(feature="dbus")]
 extern crate dbus;
@@ -33,7 +41,6 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use docopt::Docopt;
-use rustc_serialize::json;
 
 use kademlia::Kademlia;
 use node::Node;
@@ -51,7 +58,7 @@ Options:
     -j, --join <join_addr>       Bootstrap using these addresses.
 ";
 
-#[derive(RustcDecodable,Debug)]
+#[derive(RustcDecodable, Debug)]
 struct Args {
 	flag_config:  Option<String>,
 	flag_listen:  Option<String>,
@@ -68,7 +75,7 @@ fn load_config(cfg_path: &Path) -> Vec<SocketAddr> {
 		let mut contents = String::new();
 		cfg_file.read_to_string(&mut contents).unwrap_or(0);
 
-		let nodes:Vec<Node> = json::decode(&contents[..]).unwrap_or(vec![]);
+		let nodes:Vec<Node> = deserialize(&contents[..].as_bytes()).unwrap_or(vec![]);
 		nodes.iter().map(|n| n.addr).collect()
 	} else {
 		vec![]
@@ -113,10 +120,10 @@ fn main() {
 
 	loop {
 		let nodes = kad.get_nodes();
-		let contents = json::encode(&nodes).unwrap_or("".to_string());
+		let contents = serialize(&nodes, Bounded(100*1024)).unwrap_or(Vec::new());
 
 		if let Ok(mut cfg_file) = File::create(&cfg_path) {
-			cfg_file.write(contents.as_bytes()).unwrap_or(0);
+			cfg_file.write(&contents[..]).unwrap_or(0);
 		}
 
 		sleep(Duration::from_secs(5*60));

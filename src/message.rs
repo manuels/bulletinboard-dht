@@ -1,19 +1,13 @@
 use std::ops::Deref;
 
-use rustc_serialize::base64;
-use rustc_serialize::base64::{ToBase64,FromBase64};
-use rustc_serialize::{Encodable,Decodable,Encoder,Decoder};
-
 use node::{Node, NodeId};
-
-use json;
 
 pub const COOKIE_BYTELEN:usize = 160/8;
 
 //pub type Cookie = [u8; COOKIE_LEN/8];
 pub type Cookie = Vec<u8>;
 
-#[derive(RustcDecodable, RustcEncodable, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Message {
 		Ping(Ping),
 		Pong(Pong),
@@ -53,33 +47,33 @@ impl Message {
 	}
 }
 
-#[derive(RustcDecodable, RustcEncodable, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Ping {
 	pub sender_id: NodeId,
 	pub cookie: Cookie,
 }
 
-#[derive(RustcDecodable, RustcEncodable, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Pong {
 	pub sender_id: NodeId,
 	pub cookie: Cookie,
 }
 
-#[derive(RustcDecodable, RustcEncodable, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct FindNode {
 	pub sender_id: NodeId,
 	pub cookie:    Cookie,
 	pub key:       NodeId,
 }
 
-#[derive(RustcDecodable, RustcEncodable, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct FindValue {
 	pub sender_id: NodeId,
 	pub cookie:    Cookie,
 	pub key:       NodeId,
 }
 
-#[derive(RustcDecodable, RustcEncodable, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct FoundNode {
 	pub sender_id:  NodeId,
 	pub cookie:     Cookie,
@@ -87,7 +81,7 @@ pub struct FoundNode {
 	pub node:       Node,
 }
 
-#[derive(RustcDecodable, RustcEncodable, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct FoundValue {
 	pub sender_id:   NodeId,
 	pub cookie:      Cookie,
@@ -95,7 +89,7 @@ pub struct FoundValue {
 	pub value:       Value,
 }
 
-#[derive(RustcDecodable, RustcEncodable, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Store {
 	pub sender_id: NodeId,
 	pub cookie:    Cookie,
@@ -103,7 +97,7 @@ pub struct Store {
 	pub value:     Value,
 }
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Value {
 	data: Vec<u8>
 }
@@ -121,33 +115,3 @@ impl Deref for Value {
 		&self.data
 	}
 }
-
-impl Encodable for Value {
-	fn encode<E: Encoder>(&self, enc: &mut E) -> Result<(), E::Error> {
-		let base64 = self.data.to_base64(base64::STANDARD);
-
-		enc.emit_str(&base64[..])
-	}
-}
-
-impl Decodable for Value {
-	fn decode<D: Decoder>(dec: &mut D) -> Result<Self, D::Error> {
-		let base64 = try!(dec.read_str());
-		let data = try!(base64.from_base64()
-			.map_err(|_| dec.error("error decoding base64 Value")));
-
-		Ok(Value::new(data))
-	}
-}
-
-#[test]
-fn test_value_coding() {
-	let actual = Value::new(vec![1,2,3]);
-
-	let encoded = json::encode(&actual).unwrap();
-	warn!("{:?}", encoded);
-	let expected: Value = json::decode(&encoded).unwrap();
-
-	assert_eq!(actual, expected);
-}
-
