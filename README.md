@@ -14,12 +14,13 @@ The interface is provided as a D-Bus service via these commands (see [example be
       Object Path: /
       Interface:   org.manuel.BulletinBoard
       Commands:
+       - Store(app_id: str, key: [u8], value: [u8], lifetime_sec: u64)
        - Put(app_id: str, key: [u8], value: [u8])
        - Get(app_id: str, key: [u8]) -> (values: [[u8]])
 
 Please note that the value must not exceed 2048 bytes!
 
-The lifetime for a value you Put() in the DHT is 15 minutes, so you should call Put() every, say, 10 minutes to make sure it stays in the DHT.
+The lifetime for a value you Put() in the DHT is 15 minutes, so you should call Put() every, say, 10 minutes to make sure it stays in the DHT (or just use Store()).
 
 
 Installation
@@ -28,18 +29,18 @@ Installation
 1) **Download**
 
          # Debian/Ubuntu
-         wget 'https://github.com/manuels/bulletinboard-dht/releases/download/v0.4.5.15/bulletinboard_0.4.5.15_amd64.deb'
+         wget 'https://github.com/manuels/bulletinboard-dht/releases/download/v0.5.0/bulletinboard_0.5.0_amd64.deb'
 
          # Fedora
-         wget 'https://github.com/manuels/bulletinboard-dht/releases/download/v0.4.5.15/bulletinboard-0.4.5.15-1.x86_64.rpm'
+         wget 'https://github.com/manuels/bulletinboard-dht/releases/download/v0.5.0/bulletinboard-0.5.0-1.x86_64.rpm'
 
 2) **Install bulletinboard**
 
          # Debian/Ubuntu
-         sudo dpkg -i bulletinboard_0.4.5.15_amd64.deb
+         sudo dpkg -i bulletinboard_0.5.0_amd64.deb
 
          # Fedora
-         sudo rpm -ivh bulletinboard-0.4.5.15-1.x86_64.rpm
+         sudo rpm -ivh bulletinboard-0.5.0.x86_64.rpm
 
 Usage
 -----
