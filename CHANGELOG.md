@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.5.0] 2017-05-11
+### Added
+- New IPv4 and IPv6 supernodes
+
 ## [0.5.0] 2017-04-30
 ### Changed
 - New message format

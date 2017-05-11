@@ -103,6 +103,8 @@ fn main() {
 		.chain(args.flag_join.into_iter())
 		.collect();
 	supernodes.push("[2a00:1630:66:2a9::6db4]:59056".to_string());
+	supernodes.push("[162.211.65.88:56789".to_string());
+	supernodes.push("[2602:fff6:0001:2cf3:0000:0000:0000:1]:56790".to_string());
 	supernodes.sort_by(|a,b| a.cmp(b));
 	supernodes.dedup();
 
