@@ -1,6 +1,10 @@
 # Change Log
 
-## [0.5.0] 2017-05-11
+## [0.5.2] 2017-05-11
+### Fixed
+- Fix typo in supernode
+
+## [0.5.1] 2017-05-11
 ### Added
 - New IPv4 and IPv6 supernodes
 

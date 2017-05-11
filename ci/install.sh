@@ -8,6 +8,7 @@ main() {
     if [ $TRAVIS_OS_NAME = linux ]; then
         target=x86_64-unknown-linux-gnu
         sort=sort
+        sudo apt-get update
         sudo apt-get install -y libdbus-1-dev dbus-x11
     else
         target=x86_64-apple-darwin
