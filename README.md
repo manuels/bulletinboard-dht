@@ -2,6 +2,7 @@ BulletinBoard DHT
 =================
 
 [![Build Status](https://travis-ci.org/manuels/bulletinboard-dht.svg?branch=master)](https://travis-ci.org/manuels/bulletinboard-dht)
+[![Crates Version](https://img.shields.io/crates/v/bulletinboard.svg)](https://crates.io/crates/bulletinboard)
 
 [https://github.com/manuels/bulletinboard-dht](https://github.com/manuels/bulletinboard-dht)
 
