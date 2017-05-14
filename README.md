@@ -1,6 +1,8 @@
 BulletinBoard DHT
 =================
 
+[![Build Status](https://travis-ci.org/manuels/bulletinboard-dht.svg?branch=master)](https://travis-ci.org/manuels/bulletinboard-dht)
+
 [https://github.com/manuels/bulletinboard-dht](https://github.com/manuels/bulletinboard-dht)
 
 Introduction
@@ -29,18 +31,18 @@ Installation
 1) **Download**
 
          # Debian/Ubuntu
-         wget 'https://github.com/manuels/bulletinboard-dht/releases/download/v0.5.0/bulletinboard_0.5.0_amd64.deb'
+         wget 'https://github.com/manuels/bulletinboard-dht/releases/download/v0.5.3/bulletinboard_0.5.3_amd64.deb'
 
          # Fedora
-         wget 'https://github.com/manuels/bulletinboard-dht/releases/download/v0.5.0/bulletinboard-0.5.0-1.x86_64.rpm'
+         wget 'https://github.com/manuels/bulletinboard-dht/releases/download/v0.5.3/bulletinboard-0.5.3-1.x86_64.rpm'
 
 2) **Install bulletinboard**
 
          # Debian/Ubuntu
-         sudo dpkg -i bulletinboard_0.5.0_amd64.deb
+         sudo dpkg -i bulletinboard_0.5.3_amd64.deb
 
          # Fedora
-         sudo rpm -ivh bulletinboard-0.5.0.x86_64.rpm
+         sudo rpm -ivh bulletinboard-0.5.3.x86_64.rpm
 
 Usage
 -----

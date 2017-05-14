@@ -21,16 +21,16 @@ matrix:
   # don't need
   include:
     # Linux
-    - env: TARGET=i686-unknown-linux-gnu
+#    - env: TARGET=i686-unknown-linux-gnu
     - env: TARGET=i686-unknown-linux-musl
     - env: TARGET=x86_64-unknown-linux-gnu
     - env: TARGET=x86_64-unknown-linux-musl
 
     # OSX
-    - env: TARGET=i686-apple-darwin
-      os: osx
-    - env: TARGET=x86_64-apple-darwin
-      os: osx
+#    - env: TARGET=i686-apple-darwin
+#      os: osx
+#    - env: TARGET=x86_64-apple-darwin
+#      os: osx
 
     # *BSD
 #    - env: TARGET=i686-unknown-freebsd DISABLE_TESTS=1
@@ -52,9 +52,9 @@ matrix:
     # Testing other channels
     - env: TARGET=x86_64-unknown-linux-gnu
       rust: nightly
-    - env: TARGET=x86_64-apple-darwin
-      os: osx
-      rust: nightly
+#    - env: TARGET=x86_64-apple-darwin
+#      os: osx
+#      rust: nightly
 
 before_install: set -e
 

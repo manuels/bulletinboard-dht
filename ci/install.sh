@@ -8,8 +8,27 @@ main() {
     if [ $TRAVIS_OS_NAME = linux ]; then
         target=x86_64-unknown-linux-gnu
         sort=sort
+        echo 'APT::Default-Release "trusty";' | sudo tee /etc/apt/apt.conf.d/01ubuntu
+        echo 'deb http://archive.ubuntu.com/ubuntu xenial main restricted universe multiverse' | sudo tee -a /etc/apt/sources.list
+        echo <<EOF | sudo tee -a /etc/apt/preferences
+Package: libdbus-1-dev
+Pin: release n=trusty
+Pin-Priority: -10
+
+Package: libdbus-1-dev
+Pin: release n=xenial
+Pin-Priority: 900
+
+Package: dbus-x11
+Pin: release n=trusty
+Pin-Priority: -10
+
+Package: dbus-x11
+Pin: release n=xenial
+Pin-Priority: 900
+EOF
         sudo apt-get update
-        sudo apt-get install -y libdbus-1-dev dbus-x11
+        sudo apt-get install -t xenial -y binutils libdbus-1-dev dbus-x11
     else
         target=x86_64-apple-darwin
         sort=gsort  # for `sort --sort-version`, from brew's coreutils.

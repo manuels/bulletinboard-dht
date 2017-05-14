@@ -51,16 +51,18 @@ main() {
     ~/.rbenv/bin/rbenv rehash
     which gem
 
-    gem install --no-ri --no-rdoc ffi
-    gem install --no-ri --no-rdoc fpm
-    fpm -s dir -t deb -n $CRATE_NAME -v `echo $TRAVIS_TAG | tr -d v` \
-        $src/org.manuel.BulletinBoard.service=/usr/share/dbus-1/services/ \
-        $src/target/$TARGET/release/bulletinboard=/usr/bin/
-    fpm -s dir -t rpm -n $CRATE_NAME -v `echo $TRAVIS_TAG | tr -d v` \
-        $src/org.manuel.BulletinBoard.service=/usr/share/dbus-1/services/ \
-        $src/target/$TARGET/release/bulletinboard=/usr/bin/
-    cp *deb $src
-    cp *rpm $src
+    if [ $NAME = with_dbus_service ]; then
+        gem install --no-ri --no-rdoc ffi
+        gem install --no-ri --no-rdoc fpm
+        fpm -s dir -t deb -n $CRATE_NAME -v `echo $TRAVIS_TAG | tr -d v` \
+            $src/org.manuel.BulletinBoard.service=/usr/share/dbus-1/services/ \
+            $src/target/$TARGET/release/bulletinboard=/usr/bin/
+        fpm -s dir -t rpm -n $CRATE_NAME -v `echo $TRAVIS_TAG | tr -d v` \
+            $src/org.manuel.BulletinBoard.service=/usr/share/dbus-1/services/ \
+            $src/target/$TARGET/release/bulletinboard=/usr/bin/
+        cp *deb $src
+        cp *rpm $src
+    fi
 
     cd $src
 

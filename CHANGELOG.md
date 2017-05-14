@@ -1,5 +1,10 @@
 # Change Log
 
+## [0.5.3] 2017-05-14
+### Fixed
+- Better debug output
+- Use dbus v1.10
+
 ## [0.5.2] 2017-05-11
 ### Fixed
 - Fix typo in supernode
