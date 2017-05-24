@@ -17,7 +17,7 @@ docopt = "0.6.80"
 serde = "0.9"
 serde_derive = "0.9"
 bincode = "1.0.0-alpha7"
-rustc-serialize = "0.3.24"
+rustc-serialize = "0.3.22"
 
 [features]
 default = ["dbus_service"]

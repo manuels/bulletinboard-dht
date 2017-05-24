@@ -1,3 +1,4 @@
+use std::fmt;
 use std::ops::Deref;
 
 use node::{Node, NodeId};
@@ -47,33 +48,33 @@ impl Message {
 	}
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone)]
 pub struct Ping {
 	pub sender_id: NodeId,
 	pub cookie: Cookie,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone)]
 pub struct Pong {
 	pub sender_id: NodeId,
 	pub cookie: Cookie,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone)]
 pub struct FindNode {
 	pub sender_id: NodeId,
 	pub cookie:    Cookie,
 	pub key:       NodeId,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone)]
 pub struct FindValue {
 	pub sender_id: NodeId,
 	pub cookie:    Cookie,
 	pub key:       NodeId,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone)]
 pub struct FoundNode {
 	pub sender_id:  NodeId,
 	pub cookie:     Cookie,
@@ -81,7 +82,7 @@ pub struct FoundNode {
 	pub node:       Node,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone)]
 pub struct FoundValue {
 	pub sender_id:   NodeId,
 	pub cookie:      Cookie,
@@ -89,7 +90,7 @@ pub struct FoundValue {
 	pub value:       Value,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone)]
 pub struct Store {
 	pub sender_id: NodeId,
 	pub cookie:    Cookie,
@@ -115,3 +116,61 @@ impl Deref for Value {
 		&self.data
 	}
 }
+
+pub fn enc_id(id: &NodeId) -> String {
+    id.iter().map(|x| format!("{:02x}", x)).collect()
+}
+
+fn enc_vec(id: &Vec<u8>) -> String {
+    id.iter().map(|x| format!("{:02x}", x)).collect()
+}
+
+impl fmt::Debug for Store {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "Store {{ sender={}, cookie={}, key: {}, value_len: {} }}",
+			enc_id(&self.sender_id), enc_vec(&self.cookie), enc_id(&self.key), &self.value.data.len())
+	}
+}
+
+impl fmt::Debug for Ping {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "Ping {{ sender={}, cookie={} }}",
+			enc_id(&self.sender_id), enc_vec(&self.cookie))
+	}
+}
+
+impl fmt::Debug for Pong {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "Pong {{ sender={}, cookie={} }}",
+			enc_id(&self.sender_id), enc_vec(&self.cookie))
+	}
+}
+
+impl fmt::Debug for FindNode {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "FindNode {{ sender={}, cookie={}, key={} }}",
+			enc_id(&self.sender_id), enc_vec(&self.cookie), enc_id(&self.key))
+	}
+}
+
+impl fmt::Debug for FindValue {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "FindValue {{ sender={}, cookie={}, key={} }}",
+			enc_id(&self.sender_id), enc_vec(&self.cookie), enc_id(&self.key))
+	}
+}
+
+impl fmt::Debug for FoundNode {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "FoundNode {{ sender={}, cookie={}, count={} {:?} }}",
+			enc_id(&self.sender_id), enc_vec(&self.cookie), self.node_count, self.node)
+	}
+}
+
+impl fmt::Debug for FoundValue {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "FoundValue {{ sender={}, cookie={}, count={} {} }}",
+			enc_id(&self.sender_id), enc_vec(&self.cookie), self.value_count, enc_vec(&self.value))
+	}
+}
+

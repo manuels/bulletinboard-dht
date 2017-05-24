@@ -1,13 +1,15 @@
-use std::sync::{Arc,Mutex};
-use std::time::Instant;
-use std::net::{SocketAddr,ToSocketAddrs};
 use std::io;
+use std::fmt;
+use std::time::Instant;
+use std::sync::{Arc,Mutex};
+use std::net::{SocketAddr,ToSocketAddrs};
 
 #[cfg(not(test))]
 use std::net::{SocketAddrV4,SocketAddrV6};
 
 use rand;
 use utils;
+use message::enc_id;
 
 pub const NODEID_BYTELEN:usize = 160/8;
 
@@ -25,7 +27,7 @@ fn now_mutex() -> Arc<Mutex<Instant>> {
 	Arc::new(Mutex::new(Instant::now()))
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Node {
 	pub addr:      SocketAddr,
 	pub node_id:   NodeId,
@@ -179,6 +181,14 @@ pub fn xor(a: &NodeId, b: &NodeId) -> NodeId {
 impl Node {
 	pub fn dist(&self, id: &NodeId) -> NodeId {
 		xor(&self.node_id, id)
+	}
+}
+
+impl fmt::Debug for Node {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+	    let secs = self.last_seen.lock().unwrap().elapsed().as_secs() as f64;
+		write!(f, "Node {{ {}, id={}, last_seen={}min ago }}",
+			self.addr, enc_id(&self.node_id), secs/60.0)
 	}
 }
 
