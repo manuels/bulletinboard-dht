@@ -20,7 +20,6 @@ pub const ALPHA_PARAM: isize = 3;
 pub const TIMEOUT_MS: u32 = 2000;
 pub const MAX_VALUE_LEN: usize = 2048;
 
-#[allow(non_snake_case)]
 #[derive(Clone)]
 pub struct Kademlia {
 	own_id: Arc<Mutex<NodeId>>,
@@ -28,7 +27,7 @@ pub struct Kademlia {
 	server: Server,
 	kbuckets: KBuckets,
 	external_values: storage::ExternalStorage,
-	TTL: Duration,
+	ttl: Duration,
 }
 
 #[derive(PartialEq,Debug)]
@@ -58,7 +57,7 @@ impl Kademlia {
 			stored_values: Arc::new(RwLock::new(HashMap::new())),
 			kbuckets: KBuckets::new(own_id.clone()),
 			external_values: storage::ExternalStorage::new(ttl),
-			TTL:      ttl,
+			ttl:      ttl,
 		};
 
 		let this = kad.clone();
