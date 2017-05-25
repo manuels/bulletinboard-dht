@@ -150,25 +150,6 @@ impl PartialEq for Node {
 	}
 }
 
-/*
-impl Decodable for Node {
-	fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
-		let (addr_str, node_id): (String, Vec<u8>) = try!(Decodable::decode(d));
-
-		if node_id.len() != NODEID_BYTELEN {
-			return Err(d.error("Invalid nodeid"));
-		}
-
-		let addr = addr_str.to_socket_addrs()
-				.map_err(|_| d.error(format!("Invalid IP address '{}'", addr_str).as_str()))
-				.and_then(|mut it| it.next().ok_or(d.error("Invalid IP address")));
-		
-		Node::new(try!(addr),node_id)
-			.map_err(|_| d.error(format!("Invalid IP address '{}'", addr_str).as_str()))
-	}
-}
-*/
-
 pub fn xor(a: &NodeId, b: &NodeId) -> NodeId {
 	let mut dist = [0u8; NODEID_BYTELEN];
 	for (i, (x,y)) in a.iter().zip(b.iter()).enumerate() {

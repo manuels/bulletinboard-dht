@@ -174,6 +174,7 @@ impl Kademlia {
 		*own_id = new_id;
 	}
 
+    /// Just store a value once
 	pub fn put(&mut self, key: NodeId, value: Vec<u8>) -> Result<(),Vec<u8>> {
 		if value.len() > MAX_VALUE_LEN {
 			return Err(value);
@@ -183,6 +184,7 @@ impl Kademlia {
 		Ok(())
 	}
 
+    /// Store a value permanently for `lifetime`
 	pub fn store(&mut self, key: NodeId, value: Vec<u8>, lifetime: u64) -> Result<(),Vec<u8>> {
         debug!("Storing {}...", enc_id(&key));
 		{
