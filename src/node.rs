@@ -187,8 +187,8 @@ impl Node {
 impl fmt::Debug for Node {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 	    let secs = self.last_seen.lock().unwrap().elapsed().as_secs() as f64;
-		write!(f, "Node {{ {}, id={}, last_seen={}min ago }}",
-			self.addr, enc_id(&self.node_id), secs/60.0)
+		write!(f, "Node {{ {}, id={}, last_seen={:.*}min ago }}",
+			self.addr, enc_id(&self.node_id), 2, secs/60.0)
 	}
 }
 

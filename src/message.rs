@@ -118,58 +118,60 @@ impl Deref for Value {
 }
 
 pub fn enc_id(id: &NodeId) -> String {
-    id.iter().map(|x| format!("{:02x}", x)).collect()
+    let start:String = id[..3].iter().map(|x| format!("{:02x}", x)).collect();
+    start + "..."
 }
 
-fn enc_vec(id: &Vec<u8>) -> String {
-    id.iter().map(|x| format!("{:02x}", x)).collect()
+pub fn enc_vec(id: &Vec<u8>) -> String {
+    let start:String = id[..3].iter().map(|x| format!("{:02x}", x)).collect();
+    start + "..."
 }
 
 impl fmt::Debug for Store {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "Store {{ sender={}, cookie={}, key: {}, value_len: {} }}",
+		write!(f, "sender={}, cookie={}, key: {}, value_len: {}",
 			enc_id(&self.sender_id), enc_vec(&self.cookie), enc_id(&self.key), &self.value.data.len())
 	}
 }
 
 impl fmt::Debug for Ping {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "Ping {{ sender={}, cookie={} }}",
+		write!(f, "sender={}, cookie={}",
 			enc_id(&self.sender_id), enc_vec(&self.cookie))
 	}
 }
 
 impl fmt::Debug for Pong {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "Pong {{ sender={}, cookie={} }}",
+		write!(f, "sender={}, cookie={}",
 			enc_id(&self.sender_id), enc_vec(&self.cookie))
 	}
 }
 
 impl fmt::Debug for FindNode {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "FindNode {{ sender={}, cookie={}, key={} }}",
+		write!(f, "sender={}, cookie={}, key={}",
 			enc_id(&self.sender_id), enc_vec(&self.cookie), enc_id(&self.key))
 	}
 }
 
 impl fmt::Debug for FindValue {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "FindValue {{ sender={}, cookie={}, key={} }}",
+		write!(f, "sender={}, cookie={}, key={}",
 			enc_id(&self.sender_id), enc_vec(&self.cookie), enc_id(&self.key))
 	}
 }
 
 impl fmt::Debug for FoundNode {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "FoundNode {{ sender={}, cookie={}, count={} {:?} }}",
+		write!(f, "sender={}, cookie={}, count={} {:?}",
 			enc_id(&self.sender_id), enc_vec(&self.cookie), self.node_count, self.node)
 	}
 }
 
 impl fmt::Debug for FoundValue {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "FoundValue {{ sender={}, cookie={}, count={} {} }}",
+		write!(f, "sender={}, cookie={}, count={} {}",
 			enc_id(&self.sender_id), enc_vec(&self.cookie), self.value_count, enc_vec(&self.value))
 	}
 }

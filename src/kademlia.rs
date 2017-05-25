@@ -13,6 +13,7 @@ use closest_nodes_iter::ClosestNodesIter;
 use message::{Message,Value,Cookie,COOKIE_BYTELEN};
 use message::{Ping,Pong, FindNode, FoundNode, FindValue, FoundValue, Store};
 use utils::ignore;
+use message::{enc_id, enc_vec};
 
 pub const K_PARAM: usize = 20;
 pub const ALPHA_PARAM: isize = 3;
@@ -152,13 +153,14 @@ impl Kademlia {
 	}
 
 	pub fn get(&self, key: NodeId) -> Vec<Vec<u8>> {
+		debug!("Finding {}...", enc_id(&key));
 		match self.find_value(key.clone()) {
 			Ok(values) => {
-				info!("Found {:?} values for {:?}", values.len(), key);
+				info!("Found {:?} values for {}", values.len(), enc_id(&key));
 				values
 			},
 			Err(nodes) => {
-				warn!("Found NO values for {:?} on {:?} nodes", key, nodes.len());
+				warn!("Found NO values for {} on {:?} nodes", enc_id(&key), nodes.len());
 				vec![]
 			}
 		}
@@ -183,6 +185,7 @@ impl Kademlia {
 	}
 
 	pub fn store(&mut self, key: NodeId, value: Vec<u8>, lifetime: u64) -> Result<(),Vec<u8>> {
+        debug!("Storing {}...", enc_id(&key));
 		{
 			let mut store = self.stored_values.write().unwrap();
 			store.insert(key.clone(), (lifetime, value.clone()));
@@ -206,9 +209,9 @@ impl Kademlia {
 		}
 
 		if nodes.len() > 0 {
-			info!("Published {:?} on {:?} nodes.", key, nodes.len());
+			info!("Published {} on {:?} nodes.", enc_id(&key), nodes.len());
 		} else {
-			warn!("Could not find any nodes to publish {:?}!", key);
+			warn!("Could not find any nodes to publish {}!", enc_id(&key));
 		}
 	}
 
@@ -286,7 +289,7 @@ impl Kademlia {
 			}
 		}
 
-        info!("Approximately {} peers in the network.", self.kbuckets.estimate_peers_in_network());
+//        info!("Approximately {} peers in the network.", self.kbuckets.estimate_peers_in_network());
 
 		Ok(())
 	}
@@ -370,14 +373,14 @@ impl Kademlia {
 		res
 	}
 
-	pub fn find_value(&self, key: NodeId) -> Result<Vec<Vec<u8>>,Vec<Node>> {
+	fn find_value(&self, key: NodeId) -> Result<Vec<Vec<u8>>,Vec<Node>> {
 		self.find(FindJob::Value, key)
 	}
 
 	fn find(&self, job: FindJob, key: NodeId) -> Result<Vec<Vec<u8>>,Vec<Node>> {
 		let closest = self.kbuckets.get_nodes();
 
-		info!("Find: {:?} initial nodes", closest.len());
+		debug!("Find{:?}: {:?} initial nodes", job, closest.len());
 		let iter = ClosestNodesIter::new(key.clone(), K_PARAM, closest);
 
 		let req = match job {
@@ -423,8 +426,6 @@ impl Kademlia {
 						}
 					},
 					(Message::FoundValue(found_value), &FindJob::Value) => {
-						debug!("Found values");
-
 						nodes_online.push(sender.clone());
 						nodes_online.sort_by(asc_dist_order!(key));
 						nodes_online.dedup();
