@@ -13,7 +13,7 @@ use closest_nodes_iter::ClosestNodesIter;
 use message::{Message,Value,Cookie,COOKIE_BYTELEN};
 use message::{Ping,Pong, FindNode, FoundNode, FindValue, FoundValue, Store};
 use utils::ignore;
-use message::{enc_id, enc_vec};
+use message::enc_id;
 
 pub const K_PARAM: usize = 20;
 pub const ALPHA_PARAM: isize = 3;
@@ -218,7 +218,7 @@ impl Kademlia {
 	fn generate_cookie() -> Cookie {
 		let cookie = Node::generate_id();
 		assert_eq!(cookie.len(), COOKIE_BYTELEN);
-		cookie.to_vec()
+		cookie
 	}
 
 	fn ping_or_replace_with(&mut self, replacement: Node) {

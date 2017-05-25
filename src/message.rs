@@ -5,8 +5,7 @@ use node::{Node, NodeId};
 
 pub const COOKIE_BYTELEN:usize = 160/8;
 
-//pub type Cookie = [u8; COOKIE_LEN/8];
-pub type Cookie = Vec<u8>;
+pub type Cookie = [u8; COOKIE_BYTELEN];
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Message {
@@ -130,49 +129,49 @@ pub fn enc_vec(id: &Vec<u8>) -> String {
 impl fmt::Debug for Store {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(f, "sender={}, cookie={}, key: {}, value_len: {}",
-			enc_id(&self.sender_id), enc_vec(&self.cookie), enc_id(&self.key), &self.value.data.len())
+			enc_id(&self.sender_id), enc_id(&self.cookie), enc_id(&self.key), &self.value.data.len())
 	}
 }
 
 impl fmt::Debug for Ping {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(f, "sender={}, cookie={}",
-			enc_id(&self.sender_id), enc_vec(&self.cookie))
+			enc_id(&self.sender_id), enc_id(&self.cookie))
 	}
 }
 
 impl fmt::Debug for Pong {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(f, "sender={}, cookie={}",
-			enc_id(&self.sender_id), enc_vec(&self.cookie))
+			enc_id(&self.sender_id), enc_id(&self.cookie))
 	}
 }
 
 impl fmt::Debug for FindNode {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(f, "sender={}, cookie={}, key={}",
-			enc_id(&self.sender_id), enc_vec(&self.cookie), enc_id(&self.key))
+			enc_id(&self.sender_id), enc_id(&self.cookie), enc_id(&self.key))
 	}
 }
 
 impl fmt::Debug for FindValue {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(f, "sender={}, cookie={}, key={}",
-			enc_id(&self.sender_id), enc_vec(&self.cookie), enc_id(&self.key))
+			enc_id(&self.sender_id), enc_id(&self.cookie), enc_id(&self.key))
 	}
 }
 
 impl fmt::Debug for FoundNode {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(f, "sender={}, cookie={}, count={} {:?}",
-			enc_id(&self.sender_id), enc_vec(&self.cookie), self.node_count, self.node)
+			enc_id(&self.sender_id), enc_id(&self.cookie), self.node_count, self.node)
 	}
 }
 
 impl fmt::Debug for FoundValue {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(f, "sender={}, cookie={}, count={} {}",
-			enc_id(&self.sender_id), enc_vec(&self.cookie), self.value_count, enc_vec(&self.value))
+			enc_id(&self.sender_id), enc_id(&self.cookie), self.value_count, enc_vec(&self.value))
 	}
 }
 
