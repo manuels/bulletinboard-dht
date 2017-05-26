@@ -27,7 +27,7 @@ impl KBuckets {
 	}
 
 	pub fn construct_node(&mut self, addr: SocketAddr, node_id: NodeId) -> io::Result<Node> {
-		let default = try!(Node::new(addr, node_id.clone()));
+		let default = try!(Node::new(addr, node_id));
 		let err = io::Error::new(io::ErrorKind::Other, "Hey, you stole my NodeId!");
 
 		match self.get_bucket(&node_id) {
@@ -104,7 +104,7 @@ impl KBuckets {
 		nodes.sort_by(asc_dist_order!(key));
 		nodes.truncate(n);
 
-		nodes.clone()
+		nodes
 	}
 
 	pub fn get_nodes(&self) -> Vec<Node> {

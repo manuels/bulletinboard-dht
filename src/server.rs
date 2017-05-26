@@ -63,7 +63,7 @@ impl Server {
 
 		{
 			let mut pending = self.pending_requests.lock().unwrap();
-			let key = (addr, req.cookie().unwrap().clone());
+			let key = (addr, *req.cookie().unwrap());
 			(*pending).insert(key, tx);
 		}
 
@@ -86,7 +86,7 @@ impl Server {
 
 		{
 			let mut pending = self.pending_requests.lock().unwrap();
-			let key = (addr.clone(), req.cookie().unwrap().clone());
+			let key = (*addr, *req.cookie().unwrap());
 			(*pending).insert(key, tx.clone());
 		}
 
@@ -123,9 +123,9 @@ impl Server {
 
 			for node in iter.take_while(|_| *(is_rx_dead.lock().unwrap()) == false) {
 				let is_rx_dead = is_rx_dead.clone();
+				let req = req.clone();
 				let node = node.clone();
 				let this = this.clone();
-				let req = req.clone();
 				let sem = sem.clone();
 				let tx = tx.clone();
 
@@ -182,7 +182,7 @@ impl Iterator for Server {
 				Ok(ref resp @ Message::Pong(_))
 				| Ok(ref resp @ Message::FoundNode(_))
 				| Ok(ref resp @ Message::FoundValue(_)) => {
-					let key = (src, resp.cookie().unwrap().clone());
+					let key = (src, *resp.cookie().unwrap());
 					let pending = self.pending_requests.lock().unwrap();
 					
 					match (*pending).get(&key) {

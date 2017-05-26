@@ -48,13 +48,13 @@ impl Kademlia {
 		let own_id = Arc::new(Mutex::new(own_id));
 
 		let kad = Kademlia {
-			own_id:   own_id.clone(),
-			server:   server.clone(),
-			stored_values: Arc::new(RwLock::new(HashMap::new())),
-			kbuckets: KBuckets::new(own_id.clone()),
+			own_id:          own_id.clone(),
+			server:          server.clone(),
+			stored_values:   Arc::new(RwLock::new(HashMap::new())),
+			kbuckets:        KBuckets::new(own_id),
 			external_values: storage::ExternalStorage::new(ttl),
-			listeners: storage::ExternalStorage::new(ttl),
-			ttl:      ttl,
+			listeners:       storage::ExternalStorage::new(ttl),
+			ttl:             ttl,
 		};
 
 		let this = kad.clone();
@@ -122,9 +122,9 @@ impl Kademlia {
 
 		let mut new_id = new_id.unwrap_or_else(|| Node::generate_id());
 		loop {
-			kad.set_own_id(new_id.clone());
+			kad.set_own_id(new_id);
 
-			let node_list = kad.find_node(new_id.clone());
+			let node_list = kad.find_node(new_id);
 
 			if !node_list.iter().any(|n|
 					n.node_id == new_id &&
@@ -150,7 +150,7 @@ impl Kademlia {
 
 	pub fn get(&self, key: NodeId) -> Vec<Vec<u8>> {
 		debug!("Finding {}...", enc_id(&key));
-        let values:Vec<Vec<u8>> = self.find_value(key.clone()).iter().collect();
+        let values:Vec<Vec<u8>> = self.find_value(key).iter().collect();
 		if values.len() > 0 {
 			info!("Found {:?} values for {}", values.len(), enc_id(&key));
 		} else {
@@ -183,7 +183,7 @@ impl Kademlia {
         debug!("Storing {}...", enc_id(&key));
 		{
 			let mut store = self.stored_values.write().unwrap();
-			store.insert(key.clone(), (lifetime, value.clone()));
+			store.insert(key, (lifetime, value.clone()));
 		}
 
 		self.put(key, value)
@@ -193,18 +193,19 @@ impl Kademlia {
 		let msg = Message::Store(Store {
 			sender_id: self.get_own_id(),
 			cookie:    Self::generate_cookie(),
-			key:       key.clone(),
+			key:       key,
 			value:     Value::new(value),
 		});
 
-		let nodes = self.find_node(key.clone());
+		let nodes = self.find_node(key);
+		let nodes_len = nodes.len();
 
-		for n in nodes.clone() {
-			self.server.hit_and_run(n.addr.clone(), &msg);
+		for n in nodes {
+			self.server.hit_and_run(n.addr, &msg);
 		}
 
-		if nodes.len() > 0 {
-			info!("Published {} on {:?} nodes.", enc_id(&key), nodes.len());
+		if nodes_len > 0 {
+			info!("Published {} on {:?} nodes.", enc_id(&key), nodes_len);
 		} else {
 			warn!("Could not find any nodes to publish {}!", enc_id(&key));
 		}
@@ -268,7 +269,7 @@ impl Kademlia {
 				let err_none = io::Error::new(io::ErrorKind::Other, "You don't have a NodeId!");
 				let sender_id = match msg.sender_id() {
 					None     => return Err(err_none),
-					Some(id) => id.clone()
+					Some(id) => id
 				};
 
 				let err_my_id = io::Error::new(io::ErrorKind::Other, "Hey, you stole my NodeId!");
@@ -310,8 +311,8 @@ impl Kademlia {
 
 				for node in node_list.into_iter() {
 					let found_node = FoundNode {
-						sender_id:  own_id.clone(),
-						cookie:     find_node.cookie.clone(),
+						sender_id:  own_id,
+						cookie:     find_node.cookie,
 						node_count: count,
 						node:       node,
 					};
@@ -326,8 +327,8 @@ impl Kademlia {
 
 					for (_, value) in value_list.into_iter() {
 						let found_value = FoundValue {
-							sender_id:   own_id.clone(),
-							cookie:      find_value.cookie.clone(),
+							sender_id:   own_id,
+							cookie:      find_value.cookie,
 							value_count: count,
 							value:       Value::new(value),
 						};
@@ -339,8 +340,8 @@ impl Kademlia {
 
 					for node in node_list.into_iter() {
 						let found_node = FoundNode {
-							sender_id:  own_id.clone(),
-							cookie:     find_value.cookie.clone(),
+							sender_id:  own_id,
+							cookie:     find_value.cookie,
 							node_count: count,
 							node:       node,
 						};
@@ -358,7 +359,7 @@ impl Kademlia {
 					    cookie.copy_from_slice(&cookie_vec);
 
                         let found_value = FoundValue {
-							sender_id:   own_id.clone(),
+							sender_id:   own_id,
 							cookie:      cookie,
 							value_count: 1,
 							value:       Value::new((*store.value).clone()),
@@ -385,12 +386,12 @@ impl Kademlia {
 		let closest = self.kbuckets.get_nodes();
 	    debug!("FindValue: {:?} initial nodes", closest.len());
 
-	    let iter = ClosestNodesIter::new(key.clone(), K_PARAM, closest);
+	    let iter = ClosestNodesIter::new(key, K_PARAM, closest);
 
 	    let req = Message::FindValue(FindValue {
 		    cookie:    Self::generate_cookie(),
 		    sender_id: self.get_own_id(),
-		    key:       key.clone(),
+		    key:       key,
 	    });
 	    let rx = self.server.send_many_request(iter.clone(), req, TIMEOUT_MS, ALPHA_PARAM); //chain channels??
 
@@ -440,12 +441,12 @@ impl Kademlia {
 		let closest = self.kbuckets.get_nodes();
 
 		debug!("FindNode: {:?} initial nodes", closest.len());
-		let iter = ClosestNodesIter::new(key.clone(), K_PARAM, closest);
+		let iter = ClosestNodesIter::new(key, K_PARAM, closest);
 
 		let req = Message::FindNode(FindNode {
 			cookie:    Self::generate_cookie(),
 			sender_id: self.get_own_id(),
-			key:       key.clone(),
+			key:       key,
 		});
 		let rx = self.server.send_many_request(iter.clone(), req, TIMEOUT_MS, ALPHA_PARAM); //chain channels??
 
@@ -457,7 +458,7 @@ impl Kademlia {
 			    failed = 0;
 
                 if let Message::FoundNode(found_node) = resp {
-				    nodes_online.push(sender.clone());
+				    nodes_online.push(sender);
 				    nodes_online.sort_by(asc_dist_order!(key));
 				    nodes_online.dedup();
 
