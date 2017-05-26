@@ -16,33 +16,36 @@ pub enum Message {
 		FindValue(FindValue),
 		FoundValue(FoundValue),
 		Store(Store),
+		Listen(Listen),
 		Timeout,
 }
 
 impl Message {
 	pub fn cookie(&self) -> Option<&Cookie> {
-		match self {
-			&Message::Ping(ref r) => Some(&r.cookie),
-			&Message::Pong(ref r) => Some(&r.cookie),
-			&Message::FindNode(ref r) => Some(&r.cookie),
-			&Message::FoundNode(ref r) => Some(&r.cookie),
-			&Message::FindValue(ref r) => Some(&r.cookie),
-			&Message::FoundValue(ref r) => Some(&r.cookie),
-			&Message::Store(ref r) => Some(&r.cookie),
-			&Message::Timeout => None,
+		match *self {
+			Message::Ping(ref r) => Some(&r.cookie),
+			Message::Pong(ref r) => Some(&r.cookie),
+			Message::FindNode(ref r) => Some(&r.cookie),
+			Message::FoundNode(ref r) => Some(&r.cookie),
+			Message::FindValue(ref r) => Some(&r.cookie),
+			Message::FoundValue(ref r) => Some(&r.cookie),
+			Message::Store(ref r) => Some(&r.cookie),
+            Message::Listen(ref r) => Some(&r.cookie),
+			Message::Timeout => None,
 		}
 	}
 
 	pub fn sender_id(&self) -> Option<NodeId> {
-		match self {
-			&Message::Ping(ref r) => Some(r.sender_id.clone()),
-			&Message::Pong(ref r) => Some(r.sender_id.clone()),
-			&Message::FindNode(ref r) => Some(r.sender_id.clone()),
-			&Message::FoundNode(ref r) => Some(r.sender_id.clone()),
-			&Message::FindValue(ref r) => Some(r.sender_id.clone()),
-			&Message::FoundValue(ref r) => Some(r.sender_id.clone()),
-			&Message::Store(ref r) => Some(r.sender_id.clone()),
-			&Message::Timeout => None,
+		match *self {
+			Message::Ping(ref r) => Some(r.sender_id.clone()),
+			Message::Pong(ref r) => Some(r.sender_id.clone()),
+			Message::FindNode(ref r) => Some(r.sender_id.clone()),
+			Message::FoundNode(ref r) => Some(r.sender_id.clone()),
+			Message::FindValue(ref r) => Some(r.sender_id.clone()),
+			Message::FoundValue(ref r) => Some(r.sender_id.clone()),
+			Message::Store(ref r) => Some(r.sender_id.clone()),
+			Message::Listen(ref r) => Some(r.sender_id.clone()),
+			Message::Timeout => None,
 		}
 	}
 }
@@ -74,6 +77,13 @@ pub struct FindValue {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone)]
+pub struct Listen {
+	pub sender_id: NodeId,
+	pub cookie:    Cookie,
+	pub key:       NodeId,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone)]
 pub struct FoundNode {
 	pub sender_id:  NodeId,
 	pub cookie:     Cookie,
@@ -97,9 +107,9 @@ pub struct Store {
 	pub value:     Value,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Hash)]
 pub struct Value {
-	data: Vec<u8>
+	pub data: Vec<u8>
 }
 
 impl Value {
@@ -172,6 +182,13 @@ impl fmt::Debug for FoundValue {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(f, "sender={}, cookie={}, count={} {}",
 			enc_id(&self.sender_id), enc_id(&self.cookie), self.value_count, enc_vec(&self.value))
+	}
+}
+
+impl fmt::Debug for Listen {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "sender={}, cookie={}, key={}",
+			enc_id(&self.sender_id), enc_id(&self.cookie), enc_id(&self.key))
 	}
 }
 

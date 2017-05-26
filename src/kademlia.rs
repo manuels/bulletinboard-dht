@@ -1,8 +1,9 @@
 use std::io;
+use std::sync::mpsc;
 use std::thread::{spawn,sleep};
 use std::net::{UdpSocket,SocketAddr,ToSocketAddrs};
 use std::sync::{Arc,Mutex,RwLock};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
 use storage;
@@ -27,13 +28,8 @@ pub struct Kademlia {
 	server: Server,
 	kbuckets: KBuckets,
 	external_values: storage::ExternalStorage,
+	listeners: storage::ExternalStorage,
 	ttl: Duration,
-}
-
-#[derive(PartialEq,Debug)]
-enum FindJob {
-	Node,
-	Value,
 }
 
 impl Kademlia {
@@ -57,6 +53,7 @@ impl Kademlia {
 			stored_values: Arc::new(RwLock::new(HashMap::new())),
 			kbuckets: KBuckets::new(own_id.clone()),
 			external_values: storage::ExternalStorage::new(ttl),
+			listeners: storage::ExternalStorage::new(ttl),
 			ttl:      ttl,
 		};
 
@@ -153,16 +150,13 @@ impl Kademlia {
 
 	pub fn get(&self, key: NodeId) -> Vec<Vec<u8>> {
 		debug!("Finding {}...", enc_id(&key));
-		match self.find_value(key.clone()) {
-			Ok(values) => {
-				info!("Found {:?} values for {}", values.len(), enc_id(&key));
-				values
-			},
-			Err(nodes) => {
-				warn!("Found NO values for {} on {:?} nodes", enc_id(&key), nodes.len());
-				vec![]
-			}
+        let values:Vec<Vec<u8>> = self.find_value(key.clone()).iter().collect();
+		if values.len() > 0 {
+			info!("Found {:?} values for {}", values.len(), enc_id(&key));
+		} else {
+			warn!("Found NO values for {}", enc_id(&key));
 		}
+		values
 	}
 
 	pub fn get_own_id(&self) -> NodeId {
@@ -330,7 +324,7 @@ impl Kademlia {
 				if value_list.len() > 0 {
 					let count = value_list.len();
 
-					for value in value_list.into_iter() {
+					for (_, value) in value_list.into_iter() {
 						let found_value = FoundValue {
 							sender_id:   own_id.clone(),
 							cookie:      find_value.cookie.clone(),
@@ -358,8 +352,25 @@ impl Kademlia {
 				if store.value.len() <= MAX_VALUE_LEN {
 					let sender = (src, store.sender_id);
 					self.external_values.put(store.key, sender, (*store.value).clone());
+
+					for ((dst, _), cookie_vec) in self.listeners.get(&store.key) {
+					    let mut cookie = [0; COOKIE_BYTELEN];
+					    cookie.copy_from_slice(&cookie_vec);
+
+                        let found_value = FoundValue {
+							sender_id:   own_id.clone(),
+							cookie:      cookie,
+							value_count: 1,
+							value:       Value::new((*store.value).clone()),
+                        };
+                        self.server.send_response(dst, &Message::FoundValue(found_value));
+					}
 				}
-			}
+			},
+			Message::Listen(listen) => {
+				let sender = (src, listen.sender_id);
+                self.listeners.put(listen.key, sender, listen.cookie.to_vec())
+			},
 			Message::Timeout
 			| Message::Pong(_)
 			| Message::FoundNode(_)
@@ -369,95 +380,102 @@ impl Kademlia {
 		Ok(())
 	}
 
-	pub fn find_node(&self, key: NodeId) -> Vec<Node> {
-		let res = self.find(FindJob::Node, key.clone()).unwrap_err();
-		res
+	fn find_value(&self, key: NodeId) -> mpsc::Receiver<Vec<u8>> {
+        let own_id = self.get_own_id();
+		let closest = self.kbuckets.get_nodes();
+	    debug!("FindValue: {:?} initial nodes", closest.len());
+
+	    let iter = ClosestNodesIter::new(key.clone(), K_PARAM, closest);
+
+	    let req = Message::FindValue(FindValue {
+		    cookie:    Self::generate_cookie(),
+		    sender_id: self.get_own_id(),
+		    key:       key.clone(),
+	    });
+	    let rx = self.server.send_many_request(iter.clone(), req, TIMEOUT_MS, ALPHA_PARAM); //chain channels??
+
+        let (result_tx, result_rx) = mpsc::channel();
+		spawn(move || {
+		    let mut values = HashSet::new();
+		    let mut value_nodes = HashSet::new();
+
+		    let mut failed = 0;
+		    while failed*250 < TIMEOUT_MS {
+			    for (_, resp) in rx.iter() {
+				    debug!("resp={:?}", resp);
+				    failed = 0;
+
+				    match resp {
+					    Message::FoundNode(found_node) => {
+						    let node = found_node.node;
+
+						    if node.node_id != own_id {
+							    iter.add_node(node);
+						    }
+					    },
+					    Message::FoundValue(FoundValue { sender_id: id, value: Value { data: v }, .. }) => {
+						    if !values.contains(&v) {
+					            result_tx.send(v.clone()).unwrap();
+					            values.insert(v);
+						    }
+
+                            value_nodes.insert(id);
+						    if value_nodes.len() == K_PARAM {
+							    return;
+						    }
+					    },
+					    _ => (),
+				    }
+			    }
+
+			    sleep(Duration::from_millis(250));
+			    failed += 1;
+		    }
+        });
+
+        result_rx
 	}
 
-	fn find_value(&self, key: NodeId) -> Result<Vec<Vec<u8>>,Vec<Node>> {
-		self.find(FindJob::Value, key)
-	}
-
-	fn find(&self, job: FindJob, key: NodeId) -> Result<Vec<Vec<u8>>,Vec<Node>> {
+	fn find_node(&self, key: NodeId) -> Vec<Node> {
 		let closest = self.kbuckets.get_nodes();
 
-		debug!("Find{:?}: {:?} initial nodes", job, closest.len());
+		debug!("FindNode: {:?} initial nodes", closest.len());
 		let iter = ClosestNodesIter::new(key.clone(), K_PARAM, closest);
 
-		let req = match job {
-			FindJob::Node =>
-				Message::FindNode(FindNode {
-					cookie:    Self::generate_cookie(),
-					sender_id: self.get_own_id(),
-					key:       key.clone(),
-				}),
-			FindJob::Value => {
-				Message::FindValue(FindValue {
-					cookie:    Self::generate_cookie(),
-					sender_id: self.get_own_id(),
-					key:       key.clone(),
-				})
-			},
-		};
-
+		let req = Message::FindNode(FindNode {
+			cookie:    Self::generate_cookie(),
+			sender_id: self.get_own_id(),
+			key:       key.clone(),
+		});
 		let rx = self.server.send_many_request(iter.clone(), req, TIMEOUT_MS, ALPHA_PARAM); //chain channels??
 
-		let mut values = vec![];
-		let mut value_nodes = vec![];
+	    let mut nodes_online = vec![];
+	    let mut failed = 0;
+	    while failed < TIMEOUT_MS/250 {
+		    for (sender, resp) in rx.iter() {
+			    debug!("resp={:?}", resp);
+			    failed = 0;
 
-		let mut nodes_online = vec![];
+                if let Message::FoundNode(found_node) = resp {
+				    nodes_online.push(sender.clone());
+				    nodes_online.sort_by(asc_dist_order!(key));
+				    nodes_online.dedup();
 
-		let mut failed = 0;
-		while failed < TIMEOUT_MS/250 {
-			for (sender, resp) in rx.iter() {
-				debug!("resp={:?}", resp);
-				failed = 0;
+				    let own_id = self.get_own_id();
+				    let node = found_node.node;
 
-				match (resp, &job) {
-					(Message::FoundNode(found_node), _) => {
-						nodes_online.push(sender.clone());
-						nodes_online.sort_by(asc_dist_order!(key));
-						nodes_online.dedup();
+				    if node.node_id != own_id {
+					    iter.add_node(node);
+				    }
+			    };
+		    }
 
-						let own_id = self.get_own_id();
-						let node = found_node.node;
+		    sleep(Duration::from_millis(250));
+		    failed += 1;
+	    }
 
-						if node.node_id != own_id {
-							iter.add_node(node);
-						}
-					},
-					(Message::FoundValue(found_value), &FindJob::Value) => {
-						nodes_online.push(sender.clone());
-						nodes_online.sort_by(asc_dist_order!(key));
-						nodes_online.dedup();
-
-						value_nodes.push(sender);
-						value_nodes.sort_by(asc_dist_order!(key));
-						value_nodes.dedup();
-
-						values.push((*found_value.value).clone());
-						values.sort_by(|a,b| a.cmp(b));
-						values.dedup();
-
-						if value_nodes.len() == K_PARAM {
-							return Ok(values);
-						}
-					}
-					_ => (),
-				}
-			}
-
-			sleep(Duration::from_millis(250));
-			failed += 1;
-		}
-
-		if values.len() > 0 {
-			Ok(values)
-		} else {
-			nodes_online.truncate(K_PARAM);
-			
-			Err(nodes_online)
-		}
+	    nodes_online.truncate(K_PARAM);
+	    nodes_online
 	}
 }
  

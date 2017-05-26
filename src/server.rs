@@ -175,6 +175,7 @@ impl Iterator for Server {
 				| Ok(Message::FindNode(_))
 				| Ok(Message::FindValue(_))
 				| Ok(Message::Store(_))
+				| Ok(Message::Listen(_))
 				| Ok(Message::Timeout)
 				| Err(_) => (),
 
