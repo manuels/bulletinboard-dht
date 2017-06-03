@@ -1,4 +1,4 @@
-BulletinBoard DHT
+![](https://github.com/manuels/bulletinboard-dht/raw/master/icon.png "Logo") BulletinBoard DHT
 =================
 
 [![Build Status](https://travis-ci.org/manuels/bulletinboard-dht.svg?branch=master)](https://travis-ci.org/manuels/bulletinboard-dht)

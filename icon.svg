@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="210mm"
+   height="297mm"
+   viewBox="0 0 210 297"
+   version="1.1"
+   id="svg8"
+   inkscape:version="0.92.1 r15371"
+   sodipodi:docname="icon.svg">
+  <defs
+     id="defs2">
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath4544">
+      <rect
+         style="fill:#3f6dd9;fill-opacity:1;stroke:none;stroke-width:0.62306863;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         id="rect4546"
+         width="95.709618"
+         height="67.652901"
+         x="154.97734"
+         y="36.292576"
+         ry="0"
+         transform="matrix(0.68894801,0.72481076,-0.68894801,0.72481076,0,0)" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath4572">
+      <circle
+         style="fill:#3f93d9;fill-opacity:1;stroke:none;stroke-width:0.50270832;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         id="circle4574"
+         cx="66.297028"
+         cy="171.28514"
+         r="34.773811" />
+    </clipPath>
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.4"
+     inkscape:cx="306.82819"
+     inkscape:cy="409.96227"
+     inkscape:document-units="mm"
+     inkscape:current-layer="g4582"
+     showgrid="false"
+     showguides="false"
+     inkscape:window-width="1920"
+     inkscape:window-height="1016"
+     inkscape:window-x="0"
+     inkscape:window-y="27"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="fill:#eaeaea;fill-opacity:1;stroke:none;stroke-width:0.66918242;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect4504-7"
+       width="80"
+       height="80"
+       x="21.071985"
+       y="126.38039"
+       ry="10.217336" />
+    <g
+       id="g4582"
+       transform="translate(-2.6125202,-2.4523773)">
+      <rect
+         clip-path="url(#clipPath4572)"
+         ry="10.217336"
+         y="126.38039"
+         x="21.071985"
+         height="80"
+         width="80"
+         id="rect4504"
+         style="fill:#3f6dd9;fill-opacity:1;stroke:none;stroke-width:0.66918242;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+      <circle
+         r="34.773811"
+         cy="166.38039"
+         cx="61.071983"
+         id="path4502"
+         style="fill:#3f93d9;fill-opacity:1;stroke:none;stroke-width:0.50270832;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+      <flowRoot
+         transform="rotate(45,437.71804,273.4362)"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;line-height:125%;font-family:FontAwesome;-inkscape-font-specification:FontAwesome;letter-spacing:0px;word-spacing:0px;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;"
+         id="flowRoot4485"
+         xml:space="preserve"><flowRegion
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:FontAwesome;-inkscape-font-specification:FontAwesome;fill:#ffffff;fill-opacity:1;stroke:none;stroke-opacity:1;"
+           id="flowRegion4487"><rect
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:FontAwesome;-inkscape-font-specification:FontAwesome;fill:#ffffff;fill-opacity:1;stroke:none;stroke-opacity:1;"
+             y="437.63626"
+             x="82.832512"
+             height="175.76654"
+             width="272.74118"
+             id="rect4489" /></flowRegion><flowPara
+           id="flowPara4495"></flowPara></flowRoot>    </g>
+  </g>
+</svg>
