@@ -6,6 +6,12 @@ use std::sync::{Arc,Mutex,RwLock};
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
+use futures::Future;
+use futures::Stream;
+use tokio_core::reactor::Handle;
+use tokio_core::reactor::Interval;
+use futures_timer::Sleep;
+
 use storage;
 use server::Server;
 use kbuckets::KBuckets;
@@ -34,14 +40,14 @@ pub struct Kademlia {
 
 impl Kademlia {
 	#[allow(dead_code)]
-	pub fn new_supernode<A: ToSocketAddrs>(addr: A, own_id: Option<NodeId>) -> Kademlia {
+	pub fn new_supernode<A: ToSocketAddrs>(handle: Handle, addr: A, own_id: Option<NodeId>) -> Kademlia {
 		let own_id = own_id.or_else(|| Some(Node::generate_id()));
-		Self::create(addr, own_id)
+		Self::create(handle, addr, own_id)
 	}
 
-	pub fn create<A: ToSocketAddrs>(addr: A, own_id: Option<NodeId>) -> Kademlia {
+	pub fn create<A: ToSocketAddrs>(handle: Handle, addr: A, own_id: Option<NodeId>) -> Kademlia {
 		let udp = UdpSocket::bind(addr).unwrap();
-		let server = Server::new(udp);
+		let server = Server::new(handle, udp);
 
 		let ttl = Duration::from_secs(15*60);
 		let own_id = own_id.unwrap_or_else(|| Node::generate_id());
@@ -58,55 +64,53 @@ impl Kademlia {
 		};
 
 		let this = kad.clone();
-		spawn(move || {
+		let handle = this.server.handle.clone();
+		handle.spawn_fn(move || {
 			for (src, msg) in server {
 				let mut this = this.clone();
 
-				spawn(move || {
+				handle.spawn_fn(move || {
 					ignore(this.handle_message(src, msg));
+					Ok(())
 				});
 			}
+			Ok(())
 		});
 
 		let this = kad.clone();
-		spawn(move || {
-			// look for a random ID from time to time
-			loop {
-				sleep(Duration::from_secs(60));
-
-				let node_id = Node::generate_id();
-				this.find_node(node_id);
-			}
-		});
+		let handle = this.server.handle.clone();
+		handle.spawn(Interval::new(Duration::from_secs(60), &handle).unwrap().for_each(move |_| {
+			let node_id = Node::generate_id();
+			this.find_node(node_id);
+			Ok(()) as Result<(), io::Error>
+		}).map_err(|_| ()));
 
 		let mut this = kad.clone();
-		spawn(move || {
+		handle.spawn(Interval::new(Duration::from_secs(5*60), &handle).unwrap().for_each(move |_| {
 			// publish stored values again and again
 			let stored_values = this.stored_values.clone();
-			loop {
-				sleep(Duration::from_secs(5 * 60));
+			let mut store = stored_values.write().unwrap();
 
-				let mut store = stored_values.write().unwrap();
+			for (key, t) in store.iter_mut() {
+				let (ref mut lifetime, ref value) = *t;
+				*lifetime = lifetime.saturating_sub(5 * 60);
 
-				for (key, t) in store.iter_mut() {
-					let (ref mut lifetime, ref value) = *t;
-					*lifetime = lifetime.saturating_sub(5 * 60);
-
-					if *lifetime > 0 {
-						this.put(*key, value.clone()).unwrap();
-					}
+				if *lifetime > 0 {
+					this.put(*key, value.clone()).unwrap();
 				}
 			}
-		});
+
+			Ok(()) as Result<(), io::Error>
+		}).map_err(|_| ()));
 
 		kad
 	}
 
-	pub fn bootstrap<A,B>(addr: A, supernodes: Vec<B>, new_id: Option<NodeId>)
+	pub fn bootstrap<A,B>(handle: Handle, addr: A, supernodes: Vec<B>, new_id: Option<NodeId>)
 		-> Kademlia
 		where A: ToSocketAddrs, B: ToSocketAddrs
 	{
-		let mut kad = Self::create(addr, None);
+		let mut kad = Self::create(handle, addr, None);
 
 		for address in supernodes.into_iter() {
 			/*
@@ -169,27 +173,27 @@ impl Kademlia {
 	}
 
     /// Just store a value once
+    #[async]
 	pub fn put(&mut self, key: NodeId, value: Vec<u8>) -> Result<(),Vec<u8>> {
 		if value.len() > MAX_VALUE_LEN {
 			return Err(value);
 		}
 
-		self.publish(key, value);
-		Ok(())
+		Ok(self.publish(key, value))
 	}
 
     /// Store a value permanently for `lifetime`
+    #[async]
 	pub fn store(&mut self, key: NodeId, value: Vec<u8>, lifetime: u64) -> Result<(),Vec<u8>> {
-        debug!("Storing {}...", enc_id(&key));
-		{
-			let mut store = self.stored_values.write().unwrap();
-			store.insert(key, (lifetime, value.clone()));
-		}
+		await!(self.put(key, value));
 
-		self.put(key, value)
+	    spawn(iter.take(lifetime/timeout).map(|| {
+    		self.put(key, value);
+        }));
 	}
 
-	fn publish(&self, key: NodeId, value: Vec<u8>) {
+    #[async]
+	fn publish(&self, key: NodeId, value: Vec<u8>) -> Result<(),()> {
 		let msg = Message::Store(Store {
 			sender_id: self.get_own_id(),
 			cookie:    Self::generate_cookie(),
@@ -197,7 +201,7 @@ impl Kademlia {
 			value:     Value::new(value),
 		});
 
-		let nodes = self.find_node(key);
+		let nodes = await!(self.find_node(key));
 		let nodes_len = nodes.len();
 
 		for n in nodes {
@@ -381,7 +385,7 @@ impl Kademlia {
 		Ok(())
 	}
 
-	fn find_value(&self, key: NodeId) -> mpsc::Receiver<Vec<u8>> {
+	fn find_value(&self, key: NodeId) -> impl Stream<Vec<u8>> {
         let own_id = self.get_own_id();
 		let closest = self.kbuckets.get_nodes();
 	    debug!("FindValue: {:?} initial nodes", closest.len());
@@ -395,49 +399,48 @@ impl Kademlia {
 	    });
 	    let rx = self.server.send_many_request(iter.clone(), req, TIMEOUT_MS, ALPHA_PARAM); //chain channels??
 
-        let (result_tx, result_rx) = mpsc::channel();
-		spawn(move || {
-		    let mut values = HashSet::new();
-		    let mut value_nodes = HashSet::new();
+        let (result_tx, result_rx) = mpsc::channel(2048);
 
-		    let mut failed = 0;
-		    while failed*250 < TIMEOUT_MS {
-			    for (_, resp) in rx.iter() {
-				    debug!("resp={:?}", resp);
-				    failed = 0;
+	    let mut values = HashSet::new();
+	    let mut value_nodes = HashSet::new();
+        let timeout = Sleep::new(Duration::from_millis(TIMEOUT_MS));
 
-				    match resp {
-					    Message::FoundNode(found_node) => {
-						    let node = found_node.node;
+        #[async]
+        for resp in rx.select2(timeout) {
+            if let Either::A((_, resp), timeout) = res? {
+			    match resp {
+				    Message::FoundNode(found_node) => {
+					    let node = found_node.node;
 
-						    if node.node_id != own_id {
-							    iter.add_node(node);
-						    }
-					    },
-					    Message::FoundValue(FoundValue { sender_id: id, value: Value { data: v }, .. }) => {
-						    if !values.contains(&v) {
-					            result_tx.send(v.clone()).unwrap();
-					            values.insert(v);
-						    }
+					    if node.node_id != own_id {
+						    iter.add_node(node);
+					    }
+				    },
+				    Message::FoundValue(FoundValue { sender_id: id, value: Value { data: v }, .. }) => {
+					    if !values.contains(&v) {
+				            //result_tx.send(v.clone()).unwrap();
+				            yield v.clone();
+				            values.insert(v);
+					    }
 
-                            value_nodes.insert(id);
-						    if value_nodes.len() == K_PARAM {
-							    return;
-						    }
-					    },
-					    _ => (),
-				    }
+                        value_nodes.insert(id);
+					    if value_nodes.len() == K_PARAM {
+						    return;
+					    }
+				    },
 			    }
 
-			    sleep(Duration::from_millis(250));
-			    failed += 1;
-		    }
-        });
+                timeout.reset();
+            }
+
+        }
+        handle.spawn(future);
 
         result_rx
 	}
 
-	fn find_node(&self, key: NodeId) -> Vec<Node> {
+    #[async]
+	fn find_node(&self, key: NodeId) -> Result<Vec<Node>> {
 		let closest = self.kbuckets.get_nodes();
 
 		debug!("FindNode: {:?} initial nodes", closest.len());
@@ -449,6 +452,12 @@ impl Kademlia {
 			key:       key,
 		});
 		let rx = self.server.send_many_request(iter.clone(), req, TIMEOUT_MS, ALPHA_PARAM); //chain channels??
+        let timeout = Sleep::new(Duration::from_millis(4*TIMEOUT_MS));
+
+        rx.select(timeout)
+          .inspect(|n| if node.node_id != own_id { iter.add_node(n) })
+          .take_while(|| is_not_timeout)
+          .fold(vec![], |nodes, n| Ok(nodes))
 
 	    let mut nodes_online = vec![];
 	    let mut failed = 0;

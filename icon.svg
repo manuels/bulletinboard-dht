@@ -15,7 +15,10 @@
    version="1.1"
    id="svg8"
    inkscape:version="0.92.1 r15371"
-   sodipodi:docname="icon.svg">
+   sodipodi:docname="icon.svg"
+   inkscape:export-filename="/home/manuel/Projects/bulletinboard-dht/icon.png"
+   inkscape:export-xdpi="20.32"
+   inkscape:export-ydpi="20.32">
   <defs
      id="defs2">
     <clipPath
@@ -49,9 +52,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1.4"
-     inkscape:cx="306.82819"
-     inkscape:cy="409.96227"
+     inkscape:zoom="0.49497475"
+     inkscape:cx="121.93864"
+     inkscape:cy="229.78927"
      inkscape:document-units="mm"
      inkscape:current-layer="g4582"
      showgrid="false"

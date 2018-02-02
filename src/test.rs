@@ -11,12 +11,14 @@ use std::time::Duration;
 #[test]
 fn test() {
 	let _ = env_logger::init();
+	let core = Core::new().unwrap();
+	let handle = core.handle();
 
 	let zeros = [0x00; NODEID_BYTELEN];
 	let ones = [0xFF; NODEID_BYTELEN];
 
 	let super_addr = ("127.0.0.1", 30000);
-	let kad_super = Kademlia::new_supernode(super_addr, Some(zeros.clone()));
+	let kad_super = Kademlia::new_supernode(handle, super_addr, Some(zeros.clone()));
 
 	let mut kad1 = Kademlia::bootstrap("0.0.0.0:30001", vec![super_addr], Some(ones.clone()));
 	let mut kad2 = Kademlia::bootstrap("0.0.0.0:30002", vec![super_addr], Some(ones.clone()));

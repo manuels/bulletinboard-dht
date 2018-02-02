@@ -1,7 +1,12 @@
 use std::borrow::Cow;
 
+use futures::prelude::*;
+use tokio_core::reactor::Core;
+
 use dbus::{Connection,BusType,NameFlag,ConnectionItem,MessageItem};
 use dbus::obj::{ObjectPath,Method,Argument,Interface};
+use dbus_tokio::{AConnection};
+use dbus_tokio::tree::{AFactory, ATree, ATreeServer};
 
 use crypto::digest::Digest;
 use crypto::sha1::Sha1;
@@ -117,6 +122,13 @@ pub fn dbus(kad: Kademlia, dbus_name: &'static str) {
 	let c = Connection::get_private(BusType::Session).unwrap();
 	c.register_name(dbus_name, NameFlag::ReplaceExisting as u32).unwrap();
 
+	unimplemented!()/*
+	let f = AFactory::new_afn::<()>();
+	let tree = f.tree(ATree::new()).add(f.object_path("/", ()).introspectable().add(
+		f.interface("org.manuel.BulletinBoard", ()).add_m(
+			f.amethod("Get", (), move |m| {
+			}
+
 	let mut o = ObjectPath::new(&c, "/", true);
 	o.insert_interface("org.manuel.BulletinBoard", Interface::new(
 		vec![
@@ -156,15 +168,12 @@ pub fn dbus(kad: Kademlia, dbus_name: &'static str) {
 	));
 	o.set_registered(true).unwrap();
 
-	const TIMEOUT_MS:i32 = 60000;
-	for n in c.iter(TIMEOUT_MS) {
-		match n {
-			ConnectionItem::MethodCall(mut m) => {
-				o.handle_message(&mut m);
-			},
-			_ => {},
-		}
-	}
+	let mut core = Core::new().unwrap();
+	let aconn = AConnection::new(c.clone(), core.handle()).unwrap();
+	let server = ATreeServer::new(c.clone(), &tree, aconn.messages().unwrap());
+
+	let server = server.for_each(|m| { println!("Unhandled message: {:?}", m); Ok(()) });
+	core.run(server).unwrap();*/
 }
 
 #[cfg(test)]
@@ -177,6 +186,10 @@ mod tests {
 	use node::NODEID_BYTELEN;
 	use kademlia::Kademlia;
 
+	use tokio_core::reactor::Core;
+	use tokio_core::reactor::Handle;
+	use tokio_core::reactor::Timeout;
+
 	use super::byte_vec_to_message_item;
 	use super::message_item_to_byte_vec;
 
@@ -187,18 +200,23 @@ mod tests {
 		let zeros = [0x00; NODEID_BYTELEN];
 		let ones = [0xFF; NODEID_BYTELEN];
 
-		let super_addr = ("127.0.0.1", 20000);
-		let _ = Kademlia::new_supernode(super_addr, Some(zeros.clone()));
+		let core = Core::new().unwrap();
+		let handle = core.handle();
 
-		let kad = Kademlia::bootstrap("127.0.0.1:20001", vec![super_addr], Some(ones.clone()));
+		let super_addr = ("127.0.0.1", 20000);
+		let _ = Kademlia::new_supernode(handle.clone(), super_addr, Some(zeros.clone()));
+
+		let kad = Kademlia::bootstrap(handle.clone(), "127.0.0.1:20001", vec![super_addr], Some(ones.clone()));
 
 		let dbus_name = "org.manuel.BulletinBoardTest1";
 		let name = dbus_name.clone();
-		spawn(move || {
+		handle.spawn_fn(move || {
 			super::dbus(kad, name);
+
+			Ok(())
 		});
 
-		sleep(Duration::from_millis(500));
+		core.run(Timeout::new(Duration::from_millis(500), &handle).unwrap()).unwrap();
 		dbus_put(dbus_name.clone(), &app_id, "foo".bytes().collect(), "bar".bytes().collect());
 		
 		let actual = dbus_get(dbus_name.clone(), &app_id, "foo".bytes().collect());

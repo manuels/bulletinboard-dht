@@ -14,15 +14,28 @@ log = "0.3.6"
 env_logger = "0.3.3"
 rust-crypto = "0.2.35"
 docopt = "0.6.80"
-serde = "0.9"
-serde_derive = "0.9"
-bincode = "1.0.0-alpha7"
+serde = "1.0.14"
+serde_derive = "1.0.14"
+bincode = "0.8.0"
 rustc-serialize = "0.3.22"
+futures-timer = "*"
 
 [features]
 default = ["dbus_service"]
-"dbus_service" = ["dbus"]
+"dbus_service" = ["dbus", "tokio-core", "futures-await", "dbus-tokio"]
+
+[dependencies.tokio-core]
+version = "0.1.9"
+optional = true
+
+[dependencies.futures-await]
+git = 'https://github.com/alexcrichton/futures-await'
+optional = true
 
 [dependencies.dbus]
-version = "0.3.2"
+version = "0.5.4"
+optional = true
+
+[dependencies.dbus-tokio]
+version = "0.1.2"
 optional = true

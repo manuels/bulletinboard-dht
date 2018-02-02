@@ -1,3 +1,5 @@
+#![feature(proc_macro, conservative_impl_trait, generators)]
+
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
@@ -13,6 +15,11 @@ extern crate rustc_serialize;
 
 use bincode::{serialize, deserialize, Bounded};
 
+extern crate futures_await as futures;
+extern crate tokio_core;
+
+#[cfg(feature="dbus")]
+extern crate dbus_tokio;
 #[cfg(feature="dbus")]
 extern crate dbus;
 
@@ -44,6 +51,13 @@ use docopt::Docopt;
 
 use kademlia::Kademlia;
 use node::Node;
+
+use futures::Future;
+use futures::Stream;
+use tokio_core::reactor::Core;
+use tokio_core::reactor::Timeout;
+use tokio_core::reactor::Interval;
+
 #[cfg(feature="dbus")]
 use dbus_service::dbus;
 
@@ -113,14 +127,18 @@ fn main() {
 		.collect();
 	debug!("supernodes: {:?}", supernodes);
 
-	let kad = Kademlia::bootstrap(&listen_addr[..], supernodes, None);
+	let core = Core::new().unwrap();
+	let handle = core.handle();
+
+	let kad = Kademlia::bootstrap(handle, &listen_addr[..], supernodes, None);
 
 	let this = kad.clone();
-	spawn(|| {
+	handle.spawn_fn(|| {
 		dbus(this, "org.manuel.BulletinBoard");
+		Ok(())
 	});
 
-	loop {
+	let future = Interval::new(Duration::from_secs(5*60), &handle).unwrap().for_each(move |_| {
 		let nodes = kad.get_nodes();
 		let contents = serialize(&nodes, Bounded(100*1024)).unwrap_or(Vec::new());
 
@@ -128,6 +146,7 @@ fn main() {
 			cfg_file.write(&contents[..]).unwrap_or(0);
 		}
 
-		sleep(Duration::from_secs(5*60));
-	}
+		Ok(())
+	});
+	core.run(future).unwrap();
 }

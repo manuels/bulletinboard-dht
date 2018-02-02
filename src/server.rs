@@ -4,10 +4,17 @@ use std::sync::mpsc::{Sender,Receiver,channel};
 use std::sync::{Arc,Mutex};
 use std::str;
 use std::io;
-use std::net::{SocketAddr,UdpSocket};
+use std::net::{SocketAddr};
 use std::collections::HashMap;
 
 use bincode::{serialize, deserialize, Bounded};
+
+use futures::prelude::*;
+use futures::Future;
+use tokio_core::reactor::Handle;
+use tokio_core::reactor::Timeout;
+use tokio_core::net::UdpSocket;
+use tokio_core::net::UdpFramed;
 
 use utils::ignore;
 use utils;
@@ -16,32 +23,27 @@ use message::{Message, Cookie};
 use node::Node;
 
 pub struct Server {
-	sock: UdpSocket,
-	pending_requests: Arc<Mutex<HashMap<(SocketAddr, Cookie), Sender<Message>>>>
-}
-
-impl Clone for Server {
-	fn clone(&self) -> Server {
-		Server {
-			sock:             self.sock.try_clone().unwrap(),
-			pending_requests: self.pending_requests.clone(),
-		}
-	}
+	handle: Handle,
+	pub local_addr: SocketAddr,
+	sink: SplitSink<UdpFramed<Codec>>,
+	stream:  SplitStream<UdpFramed<Codec>>,
+	pending_requests: Rc<RefCell<HashMap<(SocketAddr, Cookie), Sender<Message>>>>
 }
 
 // TODO: cleanup 'pending_requests' from time to time!
 
 impl Server {
-	pub fn new(sock: UdpSocket) -> Server {
+	pub fn new(handle: Handle, sock: UdpSocket) -> Result<Server> {
 		info!("Listening on {:?}", sock.local_addr());
+		let local_addr = sock.local_addr()?;
+		let sink, stream = sock.framed(Codec).split();
 		Server {
-			sock: sock.try_clone().unwrap(),
-			pending_requests: Arc::new(Mutex::new(HashMap::new())),
+			handle,
+			local_addr,
+			sink,
+			stream
+			pending_requests: Rc::new(RefCell::new(HashMap::new())),
 		}
-	}
-
-	pub fn local_addr(&self) -> io::Result<SocketAddr> {
-		self.sock.local_addr()
 	}
 
 	/// just send a message and don't care about the reponse
@@ -94,12 +96,14 @@ impl Server {
 		let buf = serialize(&req, Bounded(2048)).unwrap();
 		ignore(self.sock.send_to(&buf[..], addr));
 
-		spawn(move || {
-			sleep(Duration::from_millis(timeout as u64));
-			match tx.send(Message::Timeout) {
-				Ok(_) => (),
-				Err(_) => (),
-			}
+		let handle = self.handle.clone();
+		handle.spawn_fn(move || {
+			Timeout::new(Duration::from_millis(timeout as u64), &handle).unwrap().then(move |_| {
+				match tx.send(Message::Timeout) {
+					Ok(_) => Ok(()),
+					Err(_) => Ok(()),
+				}
+			})
 		});
 
 		rx
@@ -118,7 +122,7 @@ impl Server {
 		let (tx, rx) = channel();
 
 		let this = self.clone();
-		spawn(move || {
+		self.handle.spawn_fn(move || {
 			let sem = Arc::new(Semaphore::new(concurrency));
 
 			for node in iter.take_while(|_| *(is_rx_dead.lock().unwrap()) == false) {
@@ -132,7 +136,7 @@ impl Server {
 				// acquire BEFORE we spawn!
 				sem.acquire();
 
-				spawn(move || {
+				this.handle.spawn_fn(move || {
 					let rx = this.send_request_ms(&node.addr, &req, timeout);
 					
 					for resp in rx {
@@ -145,10 +149,14 @@ impl Server {
 						}
 					}
 					sem.release();
+
+					Ok(())
 				});
 			}
+
+			Ok(())
 		});
-		sleep(Duration::from_millis(timeout as u64));
+//		await!(Timeout::new(Duration::from_millis(timeout as u64), &self.handle).unwrap());
 
 		rx
 	}
