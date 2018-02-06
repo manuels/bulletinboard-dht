@@ -1,0 +1,12 @@
+[package]
+name = "bulletinboard-dht"
+version = "0.1.0"
+authors = ["Manuel Schölling <manuel.schoelling@gmx.de>"]
+
+[dependencies]
+rand = "0.4.2"
+futures-await = "0.1"
+tokio-core = "0.1.12"
+tokio-timer = "0.1.2"
+log = "*"
+error-chain = "*"
